@@ -47,6 +47,7 @@ export interface BattleState {
   reportSummary: string;
   answer: string;                  // the agent's real streamed answer (the useful output)
   streamDone: boolean;             // true once the SSE stream has fully ended
+  skillUses: Record<SkillKind, number>; // how many times each skill was cast this run
 }
 
 /** Raw event shape we forward from the Vercel AI SDK fullStream over SSE. */

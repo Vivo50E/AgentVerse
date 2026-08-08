@@ -3,8 +3,11 @@
 // zustand battle store; a few optional props allow overrides for testing or
 // for wiring "New Quest" to app-level logic.
 import { useMemo } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useBattle } from '../battle/store';
+import { useProgression, xpToNext } from '../progression';
+import { STAT_LABELS } from '../loadout/types';
+import type { Stat as StatKey } from '../loadout/types';
 import { buildShareText, shareToX } from './shareToX';
 import { AnswerView } from './AnswerView';
 import type { SkillKind } from '../battle/types';
@@ -61,6 +64,11 @@ export function ReportCard({ onNewQuest, onClose, skillsCast }: ReportCardProps)
   const streamDone = useBattle((s) => s.streamDone);
   const reset = useBattle((s) => s.reset);
 
+  // Agent progression — level, XP toward next, and what was learned this quest.
+  const level = useProgression((s) => s.level);
+  const xp = useProgression((s) => s.xp);
+  const award = useProgression((s) => s.lastAward);
+
   const won = phase === 'victory';
 
   // Cast log lines are prefixed "✦ … casts <skill>". We can't recover the exact
@@ -86,6 +94,12 @@ export function ReportCard({ onNewQuest, onClose, skillsCast }: ReportCardProps)
   const casts = skillsCast ?? castCount;
   const hpPct = Math.max(0, Math.min(100, (hero.hp / hero.maxHp) * 100));
   const accent = won ? C.gold : C.bad;
+
+  const xpNext = xpToNext(level);
+  const xpPct = Math.max(0, Math.min(100, (xp / xpNext) * 100));
+  const learned = award
+    ? (Object.entries(award.gains) as [StatKey, number][]).filter(([, n]) => n > 0)
+    : [];
 
   const handleShare = () => {
     void shareToX(
@@ -223,6 +237,137 @@ export function ReportCard({ onNewQuest, onClose, skillsCast }: ReportCardProps)
             }}
           />
         </div>
+      </div>
+
+      {/* progression — level, XP, learned growth, level-up celebration */}
+      <div style={{ marginTop: 16 }}>
+        {/* level-up banner (animates in when the award lands) */}
+        <AnimatePresence>
+          {award?.leveledUp && (
+            <motion.div
+              key="levelup"
+              initial={{ opacity: 0, scale: 0.6, y: 8 }}
+              animate={{
+                opacity: 1,
+                scale: [0.6, 1.08, 1],
+                y: 0,
+                boxShadow: [
+                  '0 0 0px rgba(255,209,102,0)',
+                  '0 0 26px rgba(255,209,102,0.65)',
+                  '0 0 14px rgba(255,209,102,0.35)',
+                ],
+              }}
+              exit={{ opacity: 0, scale: 0.7 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 14 }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 10,
+                marginBottom: 12,
+                padding: '8px 12px',
+                borderRadius: 10,
+                fontWeight: 800,
+                fontSize: 14,
+                letterSpacing: '0.06em',
+                color: '#1a1405',
+                background: `linear-gradient(90deg, ${C.gold}, #ffe6a3)`,
+                border: `1px solid ${C.gold}`,
+                textShadow: '0 1px 0 rgba(255,255,255,0.35)',
+              }}
+            >
+              <motion.span
+                aria-hidden
+                animate={{ rotate: [0, 18, -18, 0], scale: [1, 1.3, 1] }}
+                transition={{ duration: 0.9, repeat: Infinity, repeatDelay: 0.6 }}
+                style={{ fontSize: 18 }}
+              >
+                ⭐
+              </motion.span>
+              LEVEL UP! &nbsp;Lv {award.fromLevel} → {award.toLevel}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* level + XP bar */}
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'baseline',
+            fontSize: 12,
+            color: C.dim,
+            marginBottom: 6,
+          }}
+        >
+          <span style={{ fontSize: 15, fontWeight: 800, color: C.gold, letterSpacing: '0.04em' }}>
+            Lv {level}
+          </span>
+          <span style={{ color: C.text }}>
+            {xp} / {xpNext} XP
+          </span>
+        </div>
+        <div style={{ height: 8, background: C.panel, borderRadius: 5, overflow: 'hidden' }}>
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${xpPct}%` }}
+            transition={{ delay: 0.3, type: 'spring', stiffness: 90, damping: 18 }}
+            style={{
+              height: '100%',
+              background: `linear-gradient(90deg, ${C.gold}, #ffb347)`,
+            }}
+          />
+        </div>
+
+        {/* learned this quest — XP gained + stat growth chips */}
+        <AnimatePresence>
+          {award && (
+            <motion.div
+              key="learned"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 6 }}
+              transition={{ duration: 0.4 }}
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: 6,
+                marginTop: 10,
+                fontSize: 11,
+              }}
+            >
+              <span style={{ color: C.faint, letterSpacing: '0.04em' }}>Learned this quest:</span>
+              <span
+                style={{
+                  padding: '2px 8px',
+                  borderRadius: 999,
+                  fontWeight: 700,
+                  color: C.gold,
+                  background: 'rgba(255,209,102,0.12)',
+                  border: `1px solid rgba(255,209,102,0.4)`,
+                }}
+              >
+                +{award.xpGained} XP
+              </span>
+              {learned.map(([stat, n]) => (
+                <span
+                  key={stat}
+                  style={{
+                    padding: '2px 8px',
+                    borderRadius: 999,
+                    fontWeight: 700,
+                    color: C.good,
+                    background: 'rgba(87,217,163,0.12)',
+                    border: `1px solid rgba(87,217,163,0.35)`,
+                  }}
+                >
+                  +{n} {STAT_LABELS[stat]}
+                </span>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* quest result */}

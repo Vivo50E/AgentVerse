@@ -21,6 +21,7 @@ function initialState(): Omit<BattleState, never> {
     reportSummary: '',
     answer: '',
     streamDone: false,
+    skillUses: { intel_summon: 0, forge: 0, strike: 0, focus: 0 },
   };
 }
 
@@ -53,6 +54,7 @@ export const useBattle = create<Store>((set) => ({
       let sources = s.sources;
       let reportSummary = s.reportSummary;
       let answer = s.answer;
+      const skillUses = { ...s.skillUses };
 
       switch (action.type) {
         case 'narrate':
@@ -62,6 +64,7 @@ export const useBattle = create<Store>((set) => ({
           break;
         case 'cast':
           hero.mp = Math.max(0, hero.mp - 8);
+          skillUses[action.skill] = (skillUses[action.skill] ?? 0) + 1;
           push(`✦ ${hero.name} casts ${action.label}`, 'good');
           break;
         case 'hit':
@@ -102,6 +105,6 @@ export const useBattle = create<Store>((set) => ({
           break;
       }
 
-      return { ...s, hero, boss, phase, round, log, sources, reportSummary, answer, lastAction: action };
+      return { ...s, hero, boss, phase, round, log, sources, reportSummary, answer, skillUses, lastAction: action };
     }),
 }));

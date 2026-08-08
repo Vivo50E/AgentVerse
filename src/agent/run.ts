@@ -2,11 +2,13 @@
 import { mapEvent } from '../battle/eventMapper';
 import { useBattle } from '../battle/store';
 import { useLoadout } from '../loadout';
+import { useProgression } from '../progression';
 import type { StreamEvent } from '../battle/types';
 
 export async function runAgent(task: string) {
   const { start, apply, endStream } = useBattle.getState();
   start();
+  useProgression.getState().clearAward(); // fresh quest, drop the previous level-up banner
 
   // The equipped loadout decides which real tools the agent may wield.
   const tools = useLoadout.getState().getEnabledTools();
@@ -53,5 +55,13 @@ export async function runAgent(task: string) {
     apply({ type: 'defeat', reason: String(err) });
   } finally {
     endStream(); // the agent's answer + sources are now final
+    // Award XP + learned growth from what the agent actually did this quest.
+    const b = useBattle.getState();
+    useProgression.getState().awardQuest({
+      skillUses: b.skillUses,
+      hpFrac: b.hero.maxHp > 0 ? b.hero.hp / b.hero.maxHp : 0,
+      sources: b.sources.length,
+      won: b.phase === 'victory',
+    });
   }
 }

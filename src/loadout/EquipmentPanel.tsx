@@ -9,6 +9,7 @@ import { CATALOG } from './catalog';
 import { HexRadar } from './HexRadar';
 import { STAT_LABELS, STATS, type Stat, type EquipmentItem } from './types';
 import { useCharacters } from '../battle/characters';
+import { useProgression, xpToNext, combineStats, powerOf } from '../progression';
 
 const RARITY: Record<string, string> = {
   common: '#9aa0b5',
@@ -70,8 +71,15 @@ export function EquipmentPanel({ onClose }: { onClose?: () => void }) {
   const equipped = useLoadout((s) => s.equipped);
   const equip = useLoadout((s) => s.equip);
   const unequip = useLoadout((s) => s.unequip);
-  const stats = useLoadout((s) => s.stats)();
-  const power = useLoadout((s) => s.powerLevel)();
+  const equipStats = useLoadout((s) => s.stats)();
+  const growth = useProgression((s) => s.growth);
+  const level = useProgression((s) => s.level);
+  const xp = useProgression((s) => s.xp);
+  // Active stats = equipment + learned growth; Power derives from these so
+  // leveling visibly raises both the hexagon and the Power banner.
+  const stats = combineStats(equipStats, growth);
+  const power = powerOf(stats);
+  const xpNext = xpToNext(level);
   const heroSprite = useCharacters((s) => s.hero);
   const [picking, setPicking] = useState<Stat | null>(null);
 
@@ -115,6 +123,17 @@ export function EquipmentPanel({ onClose }: { onClose?: () => void }) {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: 'linear-gradient(180deg,#2e2456,#1c1640)', borderBottom: '2px solid #6a5aa8', borderRadius: '14px 14px 0 0' }}>
           <h2 style={{ margin: 0, letterSpacing: 2, fontSize: 20 }}>⚔ EQUIPMENT</h2>
           <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+            {/* RPG level + XP-to-next progress */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 96 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
+                <span style={{ color: '#ffd166', fontWeight: 700, fontSize: 13, letterSpacing: 1, textShadow: '0 0 10px #ffd16688' }}>Lv {level}</span>
+                <span style={{ color: '#a79be0', fontSize: 9 }}>{xp}/{xpNext}</span>
+              </div>
+              <div style={{ height: 5, background: '#241f3a', borderRadius: 3, overflow: 'hidden', border: '1px solid #3a2f66' }}>
+                <motion.div animate={{ width: `${Math.min(100, (xp / xpNext) * 100)}%` }} transition={{ type: 'spring', stiffness: 120, damping: 18 }}
+                  style={{ height: '100%', background: 'linear-gradient(90deg,#ffd166,#ffb454)' }} />
+              </div>
+            </div>
             <span style={{ color: '#ffd166', fontWeight: 700, textShadow: '0 0 10px #ffd16688' }}>⚡ POWER {power}</span>
             {onClose && <button onClick={onClose} style={{ background: '#3a2f66', border: '1px solid #6a5aa8', color: '#e6e2ff', borderRadius: 8, padding: '5px 12px', cursor: 'pointer', fontFamily: 'inherit' }}>✕</button>}
           </div>
@@ -165,7 +184,10 @@ export function EquipmentPanel({ onClose }: { onClose?: () => void }) {
                     <motion.div animate={{ width: `${stats[s]}%` }} transition={{ type: 'spring', stiffness: 120, damping: 18 }}
                       style={{ height: '100%', background: 'linear-gradient(90deg,#7c5cff,#57d9a3)' }} />
                   </div>
-                  <span style={{ width: 26, textAlign: 'right', fontWeight: 700 }}>{stats[s]}</span>
+                  <span style={{ width: 52, textAlign: 'right', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                    {stats[s]}
+                    {growth[s] > 0 && <span style={{ color: '#57d9a3', fontWeight: 700 }}> (+{growth[s]})</span>}
+                  </span>
                 </div>
               ))}
             </div>
