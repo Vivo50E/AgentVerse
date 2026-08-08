@@ -6,6 +6,7 @@ import { JourneyStage } from './components/battle';
 import { QuestTrack } from './components/QuestTrack';
 import { ReportCard } from './components/ReportCard';
 import { AnswerView } from './components/AnswerView';
+import { AgentFlowView } from './components/AgentFlowView';
 import { SettingsPanel } from './components/SettingsPanel';
 import { GrokletGuide } from './components/GrokletGuide';
 import { DesignStudio } from './design';
@@ -76,6 +77,7 @@ export function App() {
   const [loadout, setLoadout] = useState(false);
   const [showHeroes, setShowHeroes] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [logMode, setLogMode] = useState<'log' | 'flow'>('log');
   const [reportDismissed, setReportDismissed] = useState(false);
   const { phase, round, log, answer, sources, streamDone } = useBattle();
 
@@ -141,22 +143,40 @@ export function App() {
         </div>
       </div>
 
-      {/* Battle log */}
+      {/* Battle log / Agent flow — a toggle between the RPG-flavored log and the
+          real agent execution trace (gamified view <-> observability view). */}
       <div style={{ ...panel, overflow: 'hidden' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderBottom: '1px solid #3a2f66', background: 'linear-gradient(180deg,#2a2350,#1c1740)', fontFamily: PIXEL, fontSize: 10, letterSpacing: 1, color: '#b9a3ff' }}>
-          ⚔ BATTLE LOG
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '8px 12px', borderBottom: '1px solid #3a2f66', background: 'linear-gradient(180deg,#2a2350,#1c1740)' }}>
+          {([['log', '⚔ Battle Log'], ['flow', '◇ Agent Flow']] as const).map(([mode, label]) => {
+            const on = logMode === mode;
+            return (
+              <button key={mode} onClick={() => setLogMode(mode)}
+                style={{ fontFamily: PIXEL, fontSize: 9, letterSpacing: 1, padding: '6px 10px', borderRadius: 7, cursor: 'pointer',
+                  border: `1px solid ${on ? '#7c5cff' : 'transparent'}`,
+                  background: on ? 'rgba(124,92,255,0.22)' : 'transparent',
+                  color: on ? '#e6e2ff' : '#8b84b8' }}>
+                {label}
+              </button>
+            );
+          })}
         </div>
         <div style={{ height: 220, overflowY: 'auto', padding: 14 }}>
-          <AnimatePresence initial={false}>
-            {log.map((e) => (
-              <motion.div key={e.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
-                style={{ color: toneColor[e.tone], fontSize: 13, padding: '3px 0', textShadow: e.tone === 'crit' ? '0 0 8px #ffd16688' : 'none' }}>
-                <span style={{ opacity: 0.4 }}>R{e.round} </span>{e.text}
-              </motion.div>
-            ))}
-          </AnimatePresence>
-          {log.length === 0 && (
-            <span style={{ color: '#655e90' }}>Battle log will appear here<span style={{ animation: 'blink 1s step-end infinite' }}>▌</span></span>
+          {logMode === 'log' ? (
+            <>
+              <AnimatePresence initial={false}>
+                {log.map((e) => (
+                  <motion.div key={e.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
+                    style={{ color: toneColor[e.tone], fontSize: 13, padding: '3px 0', textShadow: e.tone === 'crit' ? '0 0 8px #ffd16688' : 'none' }}>
+                    <span style={{ opacity: 0.4 }}>R{e.round} </span>{e.text}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+              {log.length === 0 && (
+                <span style={{ color: '#655e90' }}>Battle log will appear here<span style={{ animation: 'blink 1s step-end infinite' }}>▌</span></span>
+              )}
+            </>
+          ) : (
+            <AgentFlowView />
           )}
         </div>
       </div>

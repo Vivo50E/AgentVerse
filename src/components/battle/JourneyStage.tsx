@@ -16,6 +16,8 @@ import type { FoeSprites } from '../../battle/journey';
 import { Sprite } from './Sprite';
 import { SkillCast } from './SkillCast';
 import { SpellFx } from './SpellFx';
+import { useLoadout } from '../../loadout';
+import { useProgression, combineStats, powerOf } from '../../progression';
 
 const WORLD = 2600;
 
@@ -200,6 +202,11 @@ export function JourneyStage() {
   const isMelee = heroSprites?.fx?.archetype === 'slash';
   const lungeRef = useRef(0);
   lungeRef.current = Math.max(0, foeCenterX - heroX - activeFoeW * 0.45 - heroW * 0.2);
+
+  // Battle Power = equipped loadout stats + learned growth (same as the sheet).
+  const equipStats = useLoadout((s) => s.stats)();
+  const growth = useProgression((s) => s.growth);
+  const battlePower = powerOf(combineStats(equipStats, growth));
 
   // Smooth, uniform glide for travel (hero + camera + parallax) so big and
   // small progress jumps both feel smooth rather than snapping/overshooting.
@@ -499,6 +506,21 @@ export function JourneyStage() {
                   <Sprite sprites={heroSprites} pose={heroPose} height={heroH} />
                 </motion.div>
               </motion.div>
+              {/* Battle Power badge beneath the hero. */}
+              <div
+                style={{
+                  marginTop: 2,
+                  fontFamily: 'ui-monospace, monospace',
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: '#ffd166',
+                  textShadow: '0 2px 3px rgba(0,0,0,0.95)',
+                  whiteSpace: 'nowrap',
+                  letterSpacing: 0.5,
+                }}
+              >
+                ⚡ {battlePower}
+              </div>
             </div>
           </motion.div>
         )}

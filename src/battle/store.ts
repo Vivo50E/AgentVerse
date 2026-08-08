@@ -16,6 +16,7 @@ function initialState(): Omit<BattleState, never> {
     hero: freshActor('Agent Grok', 100, 60),
     boss: freshActor('The Problem', 120, 0),
     log: [],
+    flow: [],
     lastAction: null,
     sources: [],
     reportSummary: '',
@@ -24,6 +25,8 @@ function initialState(): Omit<BattleState, never> {
     skillUses: { intel_summon: 0, forge: 0, strike: 0, focus: 0 },
   };
 }
+
+let flowId = 0;
 
 interface Store extends BattleState {
   start: () => void;
@@ -55,6 +58,17 @@ export const useBattle = create<Store>((set) => ({
       let reportSummary = s.reportSummary;
       let answer = s.answer;
       const skillUses = { ...s.skillUses };
+      // Real agent-execution trace (Agent Flow view). Mirrors the RPG log but in
+      // plain observability terms: which tool ran, and whether it succeeded.
+      const flow = [...s.flow];
+      const resolveLastRunning = (status: 'ok' | 'error', detail?: string) => {
+        for (let i = flow.length - 1; i >= 0; i--) {
+          if (flow[i].status === 'running') {
+            flow[i] = { ...flow[i], status, detail: detail ?? flow[i].detail };
+            return;
+          }
+        }
+      };
 
       switch (action.type) {
         case 'narrate':
@@ -62,13 +76,30 @@ export const useBattle = create<Store>((set) => ({
           // useful deliverable instead of spamming the battle log with fragments.
           answer += action.text;
           break;
-        case 'cast':
+        case 'cast': {
           hero.mp = Math.max(0, hero.mp - 8);
           skillUses[action.skill] = (skillUses[action.skill] ?? 0) + 1;
           push(`✦ ${hero.name} casts ${action.label}`, 'good');
+          // Real flow: a tool call is now in flight.
+          const q = typeof (action.input as { query?: unknown })?.query === 'string'
+            ? (action.input as { query: string }).query
+            : undefined;
+          flow.push({
+            id: ++flowId,
+            kind: 'tool',
+            tool: action.tool,
+            label: action.tool ? `Called ${action.tool}` : action.label,
+            status: 'running',
+            detail: q,
+          });
+          // Rounds track tool-call activity, not the rare/unreliable step-finish
+          // event (some models emit at most one per run).
+          round = s.round + 1;
           break;
+        }
         case 'hit':
           boss.hp = Math.max(0, boss.hp - action.damage);
+          resolveLastRunning('ok', 'returned results');
           push(
             `${action.crit ? '💥 CRIT! ' : ''}${action.note ?? 'hit'} — ${action.damage} dmg`,
             action.crit ? 'crit' : 'good',
@@ -83,10 +114,11 @@ export const useBattle = create<Store>((set) => ({
           break;
         case 'agent_hurt':
           hero.hp = Math.max(0, hero.hp - action.damage);
+          resolveLastRunning('error', action.reason);
           push(`⚠ ${action.reason} (-${action.damage})`, 'bad');
           break;
         case 'round_end':
-          round = s.round + 1;
+          // no-op: round count now derives from 'cast' (tool-call) frequency above.
           break;
         case 'victory':
           // Idempotent: the boss may already be down (see 'hit'). Always fold in
@@ -97,6 +129,8 @@ export const useBattle = create<Store>((set) => ({
             phase = 'victory';
             reportSummary = action.summary;
             push('🏆 VICTORY — boss defeated!', 'crit');
+            resolveLastRunning('ok');
+            flow.push({ id: ++flowId, kind: 'finish', label: 'Answer delivered', status: 'ok' });
           }
           break;
         case 'defeat':
@@ -104,10 +138,11 @@ export const useBattle = create<Store>((set) => ({
           if (phase === 'fighting') {
             phase = 'defeat';
             push(`☠ Defeat: ${action.reason}`, 'bad');
+            flow.push({ id: ++flowId, kind: 'error', label: 'Quest failed', status: 'error', detail: action.reason });
           }
           break;
       }
 
-      return { ...s, hero, boss, phase, round, log, sources, reportSummary, answer, skillUses, lastAction: action };
+      return { ...s, hero, boss, phase, round, log, flow, sources, reportSummary, answer, skillUses, lastAction: action };
     }),
 }));

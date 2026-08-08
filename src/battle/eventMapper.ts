@@ -28,7 +28,7 @@ export function mapEvent(ev: StreamEvent): BattleAction | null {
 
     case 'tool-call': {
       const { skill, label } = skillForTool(ev.toolName);
-      return { type: 'cast', skill, label, input: ev.input };
+      return { type: 'cast', skill, label, tool: ev.toolName, input: ev.input };
     }
 
     case 'tool-result':

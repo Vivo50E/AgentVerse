@@ -12,7 +12,7 @@ export type SkillKind =
 /** A single thing that happens in the fight. The event mapper produces these. */
 export type BattleAction =
   | { type: 'narrate'; text: string }                                   // text-delta / speech
-  | { type: 'cast'; skill: SkillKind; label: string; input?: unknown }  // tool-call
+  | { type: 'cast'; skill: SkillKind; label: string; tool?: string; input?: unknown } // tool-call
   | { type: 'hit'; damage: number; crit: boolean; note?: string }       // tool-result ok
   | { type: 'agent_hurt'; damage: number; reason: string }              // tool-result error / retry
   | { type: 'round_end' }                                               // step-finish
@@ -36,12 +36,23 @@ export interface LogEntry {
 
 export type Phase = 'idle' | 'fighting' | 'victory' | 'defeat';
 
+/** A real agent-execution step (the observability view behind the RPG flavor). */
+export interface FlowStep {
+  id: number;
+  kind: 'tool' | 'finish' | 'error';
+  tool?: string;        // real tool name (web_search / x_search / code_execution)
+  label: string;        // human-readable step label
+  status: 'running' | 'ok' | 'error';
+  detail?: string;      // e.g. query/input summary or result note
+}
+
 export interface BattleState {
   phase: Phase;
   round: number;
   hero: Actor;   // the agent
   boss: Actor;   // the problem/task
   log: LogEntry[];
+  flow: FlowStep[];                // real agent execution steps (Agent Flow view)
   lastAction: BattleAction | null; // components watch this to fire animations
   sources: string[];               // citations = "loot"
   reportSummary: string;
