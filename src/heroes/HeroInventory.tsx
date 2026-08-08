@@ -1,10 +1,12 @@
 // Hero Inventory — a full-screen modal roster of every hero the player has
 // designed. Browse past heroes, re-equip one into the active battle, rename or
 // delete them, or jump straight into designing a new one.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useCharacters } from '../battle/characters';
 import { useHeroRoster, type SavedHero } from './roster';
+
+const DEFAULT_ID = '__default__';
 
 /* ---- palette (matches App.tsx aesthetic) ---- */
 const BG = '#0d0b1a';
@@ -60,6 +62,23 @@ export function HeroInventory({ onClose, onDesignNew }: HeroInventoryProps) {
   const heroes = useHeroRoster((s) => s.heroes);
   const remove = useHeroRoster((s) => s.remove);
   const rename = useHeroRoster((s) => s.rename);
+  const activeHero = useCharacters((s) => s.hero);
+
+  // Ensure the default hero (loaded from the manifest) is available even if the
+  // battle stage hasn't mounted yet.
+  useEffect(() => {
+    void useCharacters.getState().loadDefaults();
+  }, []);
+
+  // The default wizard lives in the manifest, not the roster — surface it as a
+  // built-in card so the roster is never empty when a hero clearly exists.
+  const defaultInRoster =
+    !!activeHero && heroes.some((h) => h.sprites.poses.idle === activeHero.poses.idle);
+  const builtin: SavedHero[] =
+    activeHero && !defaultInRoster
+      ? [{ id: DEFAULT_ID, name: 'Agent Grok', sprites: activeHero, createdAt: 0 }]
+      : [];
+  const displayHeroes = [...builtin, ...heroes];
 
   const equip = (hero: SavedHero) => {
     useCharacters.getState().setHero(hero.sprites);
@@ -139,12 +158,12 @@ export function HeroInventory({ onClose, onDesignNew }: HeroInventoryProps) {
           </button>
         </div>
         <p style={{ margin: '0 0 22px', color: MUTED, fontSize: 13 }}>
-          {heroes.length > 0
-            ? `${heroes.length} hero${heroes.length === 1 ? '' : 'es'} saved. Re-equip one into battle or forge another.`
+          {displayHeroes.length > 0
+            ? `${displayHeroes.length} hero${displayHeroes.length === 1 ? '' : 'es'}. Re-equip one into battle or forge another.`
             : 'Every hero you design is stored here.'}
         </p>
 
-        {heroes.length === 0 ? (
+        {displayHeroes.length === 0 ? (
           <EmptyState onDesignNew={onDesignNew} />
         ) : (
           <div
@@ -155,11 +174,12 @@ export function HeroInventory({ onClose, onDesignNew }: HeroInventoryProps) {
             }}
           >
             <AnimatePresence>
-              {heroes.map((hero, i) => (
+              {displayHeroes.map((hero, i) => (
                 <HeroCard
                   key={hero.id}
                   hero={hero}
                   index={i}
+                  builtin={hero.id === DEFAULT_ID}
                   onEquip={() => equip(hero)}
                   onRemove={() => remove(hero.id)}
                   onRename={(name) => rename(hero.id, name)}
@@ -234,12 +254,13 @@ function EmptyState({ onDesignNew }: { onDesignNew?: () => void }) {
 interface HeroCardProps {
   hero: SavedHero;
   index: number;
+  builtin?: boolean;
   onEquip: () => void;
   onRemove: () => void;
   onRename: (name: string) => void;
 }
 
-function HeroCard({ hero, index, onEquip, onRemove, onRename }: HeroCardProps) {
+function HeroCard({ hero, index, builtin, onEquip, onRemove, onRename }: HeroCardProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(hero.name);
 
@@ -270,7 +291,7 @@ function HeroCard({ hero, index, onEquip, onRemove, onRename }: HeroCardProps) {
 
       {/* Name + rename */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, minHeight: 24 }}>
-        {editing ? (
+        {editing && !builtin ? (
           <input
             autoFocus
             value={draft}
@@ -312,28 +333,34 @@ function HeroCard({ hero, index, onEquip, onRemove, onRename }: HeroCardProps) {
             >
               {hero.name}
             </span>
-            <button
-              onClick={() => {
-                setDraft(hero.name);
-                setEditing(true);
-              }}
-              title="Rename"
-              style={{
-                background: 'none',
-                border: 0,
-                color: MUTED,
-                cursor: 'pointer',
-                fontSize: 13,
-                padding: 2,
-              }}
-            >
-              ✎
-            </button>
+            {!builtin && (
+              <button
+                onClick={() => {
+                  setDraft(hero.name);
+                  setEditing(true);
+                }}
+                title="Rename"
+                style={{
+                  background: 'none',
+                  border: 0,
+                  color: MUTED,
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  padding: 2,
+                }}
+              >
+                ✎
+              </button>
+            )}
           </>
         )}
       </div>
 
-      <span style={{ color: MUTED, fontSize: 11 }}>{relativeDate(hero.createdAt)}</span>
+      {builtin ? (
+        <span style={{ color: GOLD, fontSize: 11, fontWeight: 700, letterSpacing: 0.5 }}>★ DEFAULT</span>
+      ) : (
+        <span style={{ color: MUTED, fontSize: 11 }}>{relativeDate(hero.createdAt)}</span>
+      )}
 
       {/* Actions */}
       <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
@@ -344,20 +371,22 @@ function HeroCard({ hero, index, onEquip, onRemove, onRename }: HeroCardProps) {
         >
           ⚔ Equip
         </motion.button>
-        <motion.button
-          whileTap={{ scale: 0.9 }}
-          onClick={onRemove}
-          title="Delete"
-          style={{
-            ...btnBase,
-            background: 'transparent',
-            border: `1px solid ${DANGER}`,
-            color: DANGER,
-            padding: '10px 12px',
-          }}
-        >
-          🗑
-        </motion.button>
+        {!builtin && (
+          <motion.button
+            whileTap={{ scale: 0.9 }}
+            onClick={onRemove}
+            title="Delete"
+            style={{
+              ...btnBase,
+              background: 'transparent',
+              border: `1px solid ${DANGER}`,
+              color: DANGER,
+              padding: '10px 12px',
+            }}
+          >
+            🗑
+          </motion.button>
+        )}
       </div>
     </motion.div>
   );
