@@ -92,4 +92,27 @@ app.post('/api/share', (req, res) => {
 });
 
 const PORT = Number(process.env.PORT) || 8787;
-app.listen(PORT, () => console.log(`⚔️  AgentVerse API on http://localhost:${PORT}`));
+const server = app.listen(PORT, () => console.log(`⚔️  AgentVerse API on http://localhost:${PORT}`));
+
+// Long-lived SSE streams (/api/run) hold sockets open, so server.close() alone
+// hangs on restart and tsx's force-kill leaves a zombie holding the port.
+// Track sockets and destroy them on shutdown so the process exits cleanly.
+const sockets = new Set<import('node:net').Socket>();
+server.on('connection', (s) => {
+  sockets.add(s);
+  s.on('close', () => sockets.delete(s));
+});
+
+let shuttingDown = false;
+function shutdown(signal: string) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`\n${signal} received — shutting down…`);
+  for (const s of sockets) s.destroy();
+  server.close(() => process.exit(0));
+  // Hard fallback if close() still hasn't finished.
+  setTimeout(() => process.exit(0), 1000).unref();
+}
+for (const sig of ['SIGTERM', 'SIGINT', 'SIGUSR2'] as const) {
+  process.on(sig, () => shutdown(sig));
+}
