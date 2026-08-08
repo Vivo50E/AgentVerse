@@ -1,9 +1,23 @@
 // QuestTrack — a horizontal RPG "quest" progress bar for the battle area.
 // Reads useBattle via selectors and visualizes overall progress as milestone
 // nodes along an animated fill. Self-contained, inline styles, no props required.
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useBattle } from '../battle/store';
-import type { BattleAction } from '../battle/types';
+import type { BattleAction, FlowStep } from '../battle/types';
+
+/** Short label for a real tool in the live track. */
+function toolShort(step: FlowStep): string {
+  if (step.kind !== 'tool') return step.label;
+  switch (step.tool) {
+    case 'web_search': return 'Web';
+    case 'x_search': return 'X';
+    case 'code_execution': return 'Code';
+    default: return step.tool ?? 'Tool';
+  }
+}
+
+const STATUS_ICON: Record<FlowStep['status'], string> = { running: '◌', ok: '✓', error: '✕' };
 
 const PALETTE = {
   bg: '#120f26',
@@ -61,6 +75,8 @@ export function QuestTrack({ style, className }: QuestTrackProps) {
   const bossHp = useBattle((s) => s.boss.hp);
   const bossMaxHp = useBattle((s) => s.boss.maxHp);
   const lastAction = useBattle((s) => s.lastAction);
+  const flow = useBattle((s) => s.flow);
+  const [mode, setMode] = useState<'stages' | 'live'>('stages');
 
   let progress: number;
   if (phase === 'idle') progress = 0;
@@ -121,10 +137,27 @@ export function QuestTrack({ style, className }: QuestTrackProps) {
         >
           {caption}
         </motion.span>
-        <span style={{ fontSize: 12, color: PALETTE.dim, whiteSpace: 'nowrap' }}>
-          <span style={{ opacity: 0.8 }}>Round {round}</span>
-          <span style={{ margin: '0 6px', opacity: 0.4 }}>·</span>
-          <span style={{ color: fillColor, fontWeight: 700 }}>{pct}%</span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, color: PALETTE.dim, whiteSpace: 'nowrap' }}>
+          {/* Stages (RPG) ↔ Live (real agent steps) toggle */}
+          <span style={{ display: 'inline-flex', gap: 4 }}>
+            {(['stages', 'live'] as const).map((m) => {
+              const on = mode === m;
+              return (
+                <button key={m} onClick={() => setMode(m)}
+                  style={{ fontFamily: 'inherit', fontSize: 10, letterSpacing: 0.5, padding: '3px 8px', borderRadius: 6, cursor: 'pointer',
+                    border: `1px solid ${on ? PALETTE.accent : 'transparent'}`,
+                    background: on ? 'rgba(124,92,255,0.2)' : 'transparent',
+                    color: on ? '#e6e2ff' : PALETTE.dim }}>
+                  {m === 'stages' ? 'Stages' : 'Live'}
+                </button>
+              );
+            })}
+          </span>
+          <span>
+            <span style={{ opacity: 0.8 }}>Round {round}</span>
+            <span style={{ margin: '0 6px', opacity: 0.4 }}>·</span>
+            <span style={{ color: fillColor, fontWeight: 700 }}>{pct}%</span>
+          </span>
         </span>
       </div>
 
@@ -160,16 +193,44 @@ export function QuestTrack({ style, className }: QuestTrackProps) {
           transition={{ type: 'spring', stiffness: 120, damping: 20 }}
         />
 
-        {/* Milestone nodes */}
+        {/* Nodes — RPG milestones (stages) or the real agent steps (live). */}
         <div
           style={{
             position: 'relative',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'flex-start',
+            gap: 4,
           }}
         >
-          {MILESTONES.map((m, i) => {
+          {mode === 'live' ? (
+            flow.length === 0 ? (
+              <span style={{ fontSize: 10, color: PALETTE.dim, padding: '4px 2px' }}>
+                Waiting for the agent's first step…
+              </span>
+            ) : (
+              flow.map((step, i) => {
+                const isLast = i === flow.length - 1;
+                const running = step.status === 'running';
+                const color = step.status === 'error' ? PALETTE.bad : step.status === 'ok' ? PALETTE.good : PALETTE.gold;
+                return (
+                  <div key={step.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: '1 1 0', minWidth: 0 }}>
+                    <motion.div
+                      animate={running ? { boxShadow: [`0 0 6px ${color}`, `0 0 16px ${color}`, `0 0 6px ${color}`] } : { boxShadow: `0 0 8px ${color}` }}
+                      transition={running ? { duration: 1.1, repeat: Infinity } : { type: 'spring', stiffness: 200, damping: 18 }}
+                      style={{ width: 24, height: 24, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, background: PALETTE.bg, border: `2px solid ${color}`, color }}
+                    >
+                      {STATUS_ICON[step.status]}
+                    </motion.div>
+                    <span style={{ marginTop: 6, fontSize: 9, textAlign: 'center', letterSpacing: 0.3, color, fontWeight: isLast ? 700 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 60 }}>
+                      {toolShort(step)}
+                    </span>
+                  </div>
+                );
+              })
+            )
+          ) : (
+          MILESTONES.map((m, i) => {
             const reached = progress >= m.threshold;
             const isCurrent = i === currentIndex && !failed;
             const nodeColor = failed && reached ? PALETTE.bad : reached ? PALETTE.gold : PALETTE.dim;
@@ -233,7 +294,8 @@ export function QuestTrack({ style, className }: QuestTrackProps) {
                 </span>
               </div>
             );
-          })}
+          })
+          )}
         </div>
       </div>
     </div>
