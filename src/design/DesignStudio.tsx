@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { CharacterSprites } from '../battle/sprites';
 import { useCharacters } from '../battle/characters';
+import { useHeroRoster } from '../heroes';
 import { finalizeDesign, requestDesigns, type Candidate } from './designApi';
 
 /* ---- palette (matches App.tsx aesthetic) ---- */
@@ -103,7 +104,10 @@ export function DesignStudio({ onDone, target = 'hero' }: DesignStudioProps) {
       const finalName = name.trim() || selected.label || concept.trim() || `My ${kind}`;
       const sprites: CharacterSprites = await finalizeDesign(selected.url, finalName);
       if (target === 'boss') useCharacters.getState().setBoss(sprites);
-      else useCharacters.getState().setHero(sprites);
+      else {
+        useCharacters.getState().setHero(sprites);
+        useHeroRoster.getState().add(sprites, finalName);
+      }
       setForging(false);
       onDone();
     } catch (err) {

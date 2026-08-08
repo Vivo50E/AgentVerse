@@ -8,6 +8,7 @@ import { ReportCard } from './components/ReportCard';
 import { AnswerView } from './components/AnswerView';
 import { DesignStudio } from './design';
 import { EquipmentPanel } from './loadout';
+import { HeroInventory } from './heroes';
 import { useBattleVoice } from './voice';
 
 const PIXEL = "'Press Start 2P', ui-monospace, monospace";
@@ -50,6 +51,7 @@ export function App() {
   const [voiceOn, setVoiceOn] = useState(false);
   const [designing, setDesigning] = useState<false | 'hero' | 'boss'>(false);
   const [loadout, setLoadout] = useState(false);
+  const [showHeroes, setShowHeroes] = useState(false);
   const [reportDismissed, setReportDismissed] = useState(false);
   const { phase, round, log, answer, sources, streamDone } = useBattle();
 
@@ -84,6 +86,7 @@ export function App() {
       <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
         <GameButton onClick={() => setDesigning('hero')}>✦ Design Hero</GameButton>
         <GameButton onClick={() => setDesigning('boss')}>👹 Design Boss</GameButton>
+        <GameButton onClick={() => setShowHeroes(true)}>🎒 Heroes</GameButton>
         <GameButton onClick={() => setLoadout(true)}>⚙ Loadout</GameButton>
       </div>
 
@@ -143,6 +146,13 @@ export function App() {
       </AnimatePresence>
 
       {designing && <DesignStudio target={designing} onDone={() => setDesigning(false)} />}
+
+      {showHeroes && (
+        <HeroInventory
+          onClose={() => setShowHeroes(false)}
+          onDesignNew={() => { setShowHeroes(false); setDesigning('hero'); }}
+        />
+      )}
 
       <AnimatePresence>
         {loadout && <EquipmentPanel key="loadout" onClose={() => setLoadout(false)} />}

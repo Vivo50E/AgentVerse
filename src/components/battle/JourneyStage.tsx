@@ -15,6 +15,7 @@ import {
 import type { FoeSprites } from '../../battle/journey';
 import { Sprite } from './Sprite';
 import { SkillCast } from './SkillCast';
+import { SpellFx } from './SpellFx';
 
 const WORLD = 2600;
 
@@ -145,12 +146,58 @@ export function JourneyStage() {
 
   // Journey progress drives everything: camera, hero position, foe status.
   const progress = computeProgress(phase, boss.hp, boss.maxHp);
-  const heroX = 120 + progress * (WORLD - 320);
+
+  // The active foe = lowest-index waypoint not yet cleared (fall back to the
+  // final boss once everything is cleared so the VFX still has a target).
+  const activeIndex = WAYPOINTS.findIndex((_, i) => foeStatus(i, progress) !== 'cleared');
+  const activeWp = WAYPOINTS[activeIndex >= 0 ? activeIndex : WAYPOINTS.length - 1];
+  const heroPose = poseForAction(lastAction, 'hero');
+
+  // ── Sizing (one shared ground baseline; consistent 320x720 framing) ────────
+  // Every battler is bottom-aligned to `groundY`, so nobody floats or sinks.
+  const groundY = Math.round(vh * 0.05);
+  const heroH = Math.round(vh * 0.46);
+  const NOMINAL_ASPECT = 320 / 720; // pipeline framing when dims not yet loaded
+  const heroW = Math.round(heroH * (heroSprites ? heroSprites.w / heroSprites.h : NOMINAL_ASPECT));
+
+  // Active-foe geometry — normal foe ≈ hero, miniboss bigger, boss much bigger.
+  const activeIsBoss = activeWp.foeKey === 'boss';
+  const activeFoeSprites = activeIsBoss ? bossSprites : foes[activeWp.foeKey];
+  const activeFoeH = Math.round(vh * 0.5 * KIND_SCALE[activeWp.kind]);
+  const activeFoeW = Math.round(
+    activeFoeH * (activeFoeSprites ? activeFoeSprites.w / activeFoeSprites.h : NOMINAL_ASPECT),
+  );
+
+  // ── Engagement gap ─────────────────────────────────────────────────────────
+  // Natural path position for the current progress…
+  const heroPathX = 120 + progress * (WORLD - 320);
+  // …then halt a visible gap to the LEFT of the active foe so the two face off
+  // (hero faces right, foe faces left) instead of overlapping. Account for both
+  // half-widths so even the huge boss leaves a clear ~ENGAGEMENT_GAP px gap.
+  const ENGAGEMENT_GAP = 96;
+  const engageOffset = ENGAGEMENT_GAP + heroW / 2 + activeFoeW / 2;
+  const heroX = Math.max(60, heroPathX - engageOffset);
+
+  // Camera follows the hero (~35% from the left) so both hero and the foe to
+  // its right stay comfortably in frame.
   const maxCam = Math.max(0, WORLD - vw);
-  const cameraX = clamp(heroX - vw * 0.4, 0, maxCam);
+  const cameraX = clamp(heroX - vw * 0.35, 0, maxCam);
   const parallax = cameraX * 0.5;
 
-  // "Walking" feel: bob the hero while progress is actively changing.
+  // ── VFX anchor points (world-layer px, y measured from the top like SpellFx) ─
+  const activeFoeX = foeWorldX(activeWp.at);
+  // Hero staff tip = top-right of the hero sprite.
+  const staffX = heroX + heroW / 2;
+  const staffY = vh - (groundY + heroH * 0.92);
+  // Active foe center.
+  const foeCenterX = activeFoeX;
+  const foeCenterY = vh - (groundY + activeFoeH / 2);
+
+  // Smooth, uniform glide for travel (hero + camera + parallax) so big and
+  // small progress jumps both feel smooth rather than snapping/overshooting.
+  const travel = { type: 'tween' as const, duration: 0.9, ease: 'easeInOut' as const };
+
+  // "Walking" feel: procedural step-bob + forward lean while progress changes.
   const [walking, setWalking] = useState(false);
   const prevProgress = useRef(progress);
   useEffect(() => {
@@ -164,37 +211,32 @@ export function JourneyStage() {
     return undefined;
   }, [progress]);
 
-  // Skill-cast banner (center-top), re-triggered per cast.
+  // Skill-cast banner (center-top) + cast VFX trigger, re-fired per cast.
   const [cast, setCast] = useState<CastFx | null>(null);
   const castId = useRef(0);
+  const [castTrigger, setCastTrigger] = useState(0);
+  const [lastSkill, setLastSkill] = useState<SkillKind>('intel_summon');
   useEffect(() => {
     if (lastAction?.type !== 'cast') return undefined;
     setCast({ id: ++castId.current, label: lastAction.label, skill: lastAction.skill });
+    setLastSkill(lastAction.skill);
+    setCastTrigger((n) => n + 1);
     const t = window.setTimeout(() => setCast(null), 1100);
     return () => window.clearTimeout(t);
   }, [lastAction]);
 
-  // Hit-spark near the active foe when the hero lands a blow.
+  // Hit-spark + projectile VFX near the active foe when the hero lands a blow.
   const [hit, setHit] = useState<number | null>(null);
   const hitId = useRef(0);
+  const [hitTrigger, setHitTrigger] = useState(0);
   useEffect(() => {
     if (lastAction?.type !== 'hit') return undefined;
     const id = ++hitId.current;
     setHit(id);
+    setHitTrigger((n) => n + 1);
     const t = window.setTimeout(() => setHit((cur) => (cur === id ? null : cur)), 500);
     return () => window.clearTimeout(t);
   }, [lastAction]);
-
-  // The active foe = lowest-index waypoint not yet cleared.
-  const activeIndex = WAYPOINTS.findIndex((_, i) => foeStatus(i, progress) !== 'cleared');
-  const heroPose = poseForAction(lastAction, 'hero');
-
-  const heroH = Math.round(vh * 0.46);
-  const feet = Math.round(vh * 0.05);
-
-  // Smooth, uniform glide for travel (hero + camera + parallax) so big and
-  // small progress jumps both feel smooth rather than snapping/overshooting.
-  const travel = { type: 'tween' as const, duration: 0.9, ease: 'easeInOut' as const };
 
   return (
     <div
@@ -279,7 +321,8 @@ export function JourneyStage() {
           const status = foeStatus(i, progress);
           const cleared = status === 'cleared';
           const isBig = wp.kind !== 'foe';
-          const foeH = Math.round(vh * 0.42 * KIND_SCALE[wp.kind]);
+          // Normal foe ≈ hero height, miniboss bigger, boss much bigger.
+          const foeH = Math.round(vh * 0.5 * KIND_SCALE[wp.kind]);
           const x = foeWorldX(wp.at);
 
           // HP feel: every foe (boss included) shows FULL HP until the hero is
@@ -306,7 +349,7 @@ export function JourneyStage() {
               style={{
                 position: 'absolute',
                 left: x,
-                bottom: feet,
+                bottom: groundY,
                 transform: 'translateX(-50%)',
                 display: 'flex',
                 flexDirection: 'column',
@@ -377,7 +420,7 @@ export function JourneyStage() {
               style={{
                 position: 'absolute',
                 left: foeWorldX(WAYPOINTS[activeIndex].at),
-                bottom: feet + Math.round(vh * 0.18),
+                bottom: groundY + Math.round(vh * 0.18),
                 transform: 'translate(-50%, 0)',
                 width: 60,
                 height: 60,
@@ -400,7 +443,7 @@ export function JourneyStage() {
             style={{
               position: 'absolute',
               left: 0,
-              bottom: feet,
+              bottom: groundY,
               zIndex: 6,
               willChange: 'transform',
               pointerEvents: 'none',
@@ -416,19 +459,50 @@ export function JourneyStage() {
               }}
             >
               <MiniHpBar pct={heroActor.maxHp > 0 ? (heroActor.hp / heroActor.maxHp) * 100 : 0} color="#57d9a3" label={heroActor.name} />
+              {/* Procedural walk cycle: step-bob + forward lean + squash while
+                  travelling; settles to a still stance on arrival. Pivots at the
+                  feet so the lean/squash read as a stride, not a spin. */}
               <motion.div
-                animate={walking ? { y: [0, -5, 0] } : { y: 0 }}
+                animate={
+                  walking
+                    ? { y: [0, -10, 0, -10, 0], rotate: [1, 4, 1, 4, 1], scaleY: [1, 0.96, 1, 0.96, 1] }
+                    : { y: 0, rotate: 0, scaleY: 1 }
+                }
                 transition={
                   walking
-                    ? { duration: 0.5, repeat: Infinity, ease: 'easeInOut' }
-                    : { duration: 0.2 }
+                    ? { duration: 0.46, repeat: Infinity, ease: 'easeInOut' }
+                    : { duration: 0.3, ease: 'easeOut' }
                 }
+                style={{ transformOrigin: 'bottom center', willChange: 'transform' }}
               >
                 <Sprite sprites={heroSprites} pose={heroPose} height={heroH} />
               </motion.div>
             </div>
           </motion.div>
         )}
+
+        {/* Magic VFX — live inside the scrolling world so they track the
+            battlers. Cast = charge aura at the hero's staff; hit = bolt from the
+            staff to the active foe's center + impact. Same world coordinate
+            space as the sprites (px, y from the top of the world layer). */}
+        <SpellFx
+          trigger={castTrigger}
+          kind="cast"
+          skill={lastSkill}
+          originX={staffX}
+          originY={staffY}
+          targetX={foeCenterX}
+          targetY={foeCenterY}
+        />
+        <SpellFx
+          trigger={hitTrigger}
+          kind="hit"
+          skill={lastSkill}
+          originX={staffX}
+          originY={staffY}
+          targetX={foeCenterX}
+          targetY={foeCenterY}
+        />
       </motion.div>
 
       {/* Skill-cast banner — fixed to the viewport, center-top. */}

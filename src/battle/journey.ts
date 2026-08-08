@@ -58,5 +58,7 @@ export async function loadFoes(): Promise<Record<string, FoeSprites>> {
   }
 }
 
-/** Relative sprite scale by foe kind (bosses loom larger). */
-export const KIND_SCALE: Record<FoeKind, number> = { foe: 0.5, miniboss: 0.78, boss: 1 };
+/** Relative sprite scale by foe kind — normal foes stand comparable to the hero,
+ *  minibosses are clearly bigger, and the final boss looms large. Applied to a
+ *  base of ~0.5*viewportHeight in the stage. */
+export const KIND_SCALE: Record<FoeKind, number> = { foe: 0.85, miniboss: 1.2, boss: 1.7 };
