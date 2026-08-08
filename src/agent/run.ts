@@ -5,47 +5,53 @@ import { useLoadout } from '../loadout';
 import type { StreamEvent } from '../battle/types';
 
 export async function runAgent(task: string) {
-  const { start, apply } = useBattle.getState();
+  const { start, apply, endStream } = useBattle.getState();
   start();
 
   // The equipped loadout decides which real tools the agent may wield.
   const tools = useLoadout.getState().getEnabledTools();
 
-  const res = await fetch('/api/run', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ task, tools }),
-  });
+  try {
+    const res = await fetch('/api/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task, tools }),
+    });
 
-  if (!res.body) {
-    apply({ type: 'defeat', reason: 'no response stream' });
-    return;
-  }
+    if (!res.body) {
+      apply({ type: 'defeat', reason: 'no response stream' });
+      return;
+    }
 
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
 
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
 
-    // SSE frames are separated by a blank line; each has a `data: <json>` line.
-    const frames = buffer.split('\n\n');
-    buffer = frames.pop() ?? '';
-    for (const frame of frames) {
-      const line = frame.split('\n').find((l) => l.startsWith('data: '));
-      if (!line) continue;
-      const payload = line.slice(6);
-      if (payload === '[DONE]') continue;
-      try {
-        const ev = JSON.parse(payload) as StreamEvent;
-        const action = mapEvent(ev);
-        if (action) apply(action);
-      } catch {
-        /* ignore malformed frame */
+      // SSE frames are separated by a blank line; each has a `data: <json>` line.
+      const frames = buffer.split('\n\n');
+      buffer = frames.pop() ?? '';
+      for (const frame of frames) {
+        const line = frame.split('\n').find((l) => l.startsWith('data: '));
+        if (!line) continue;
+        const payload = line.slice(6);
+        if (payload === '[DONE]') continue;
+        try {
+          const ev = JSON.parse(payload) as StreamEvent;
+          const action = mapEvent(ev);
+          if (action) apply(action);
+        } catch {
+          /* ignore malformed frame */
+        }
       }
     }
+  } catch (err) {
+    apply({ type: 'defeat', reason: String(err) });
+  } finally {
+    endStream(); // the agent's answer + sources are now final
   }
 }

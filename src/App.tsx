@@ -5,6 +5,7 @@ import { runAgent } from './agent/run';
 import { JourneyStage } from './components/battle';
 import { QuestTrack } from './components/QuestTrack';
 import { ReportCard } from './components/ReportCard';
+import { AnswerView } from './components/AnswerView';
 import { DesignStudio } from './design';
 import { EquipmentPanel } from './loadout';
 import { useBattleVoice } from './voice';
@@ -49,13 +50,15 @@ export function App() {
   const [voiceOn, setVoiceOn] = useState(false);
   const [designing, setDesigning] = useState<false | 'hero' | 'boss'>(false);
   const [loadout, setLoadout] = useState(false);
-  const { phase, round, log } = useBattle();
+  const [reportDismissed, setReportDismissed] = useState(false);
+  const { phase, round, log, answer, sources, streamDone } = useBattle();
 
   useBattleVoice(voiceOn);
 
   const toneColor = { info: '#9d97c9', good: '#57d9a3', bad: '#ff6b81', crit: '#ffd166' } as const;
   const fighting = phase === 'fighting';
-  const showReport = phase === 'victory' || phase === 'defeat';
+  const showReport = (phase === 'victory' || phase === 'defeat') && !reportDismissed;
+  const startQuest = () => { setReportDismissed(false); runAgent(task); };
 
   return (
     <div style={{ color: '#e6e2ff', padding: '28px 24px 48px', minHeight: '100vh', maxWidth: 900, margin: '0 auto', position: 'relative' }}>
@@ -89,7 +92,7 @@ export function App() {
         <span style={{ color: '#57d9a3', fontWeight: 700 }}>▸</span>
         <input value={task} onChange={(e) => setTask(e.target.value)} placeholder="Give your agent a quest…" disabled={fighting}
           style={{ flex: 1, padding: '10px 8px', borderRadius: 8, border: 'none', background: 'transparent', color: '#fff', fontFamily: 'inherit', fontSize: 14, outline: 'none' }} />
-        <GameButton variant="primary" disabled={fighting} onClick={() => runAgent(task)}>
+        <GameButton variant="primary" disabled={fighting} onClick={startQuest}>
           {fighting ? '⚔ Fighting…' : '▶ Start Quest'}
         </GameButton>
       </div>
@@ -122,12 +125,19 @@ export function App() {
         </div>
       </div>
 
+      {/* Persistent quest result — the actual useful output, always on screen. */}
+      {phase !== 'idle' && (
+        <div style={{ ...panel, padding: 16, marginTop: 20 }}>
+          <AnswerView answer={answer} sources={sources} streaming={!streamDone} maxHeight={300} />
+        </div>
+      )}
+
       {/* Overlays */}
       <AnimatePresence>
         {showReport && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             style={{ position: 'fixed', inset: 0, background: 'rgba(6,4,16,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-            <ReportCard />
+            <ReportCard onClose={() => setReportDismissed(true)} />
           </motion.div>
         )}
       </AnimatePresence>

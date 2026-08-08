@@ -19,12 +19,15 @@ function initialState(): Omit<BattleState, never> {
     lastAction: null,
     sources: [],
     reportSummary: '',
+    answer: '',
+    streamDone: false,
   };
 }
 
 interface Store extends BattleState {
   start: () => void;
   apply: (action: BattleAction) => void;
+  endStream: () => void;
   reset: () => void;
 }
 
@@ -32,6 +35,8 @@ export const useBattle = create<Store>((set) => ({
   ...initialState(),
 
   start: () => set({ ...initialState(), phase: 'fighting', round: 1 }),
+
+  endStream: () => set({ streamDone: true }),
 
   reset: () => set(initialState()),
 
@@ -47,11 +52,13 @@ export const useBattle = create<Store>((set) => ({
       let round = s.round;
       let sources = s.sources;
       let reportSummary = s.reportSummary;
+      let answer = s.answer;
 
       switch (action.type) {
         case 'narrate':
-          // narration is streamed; only log full-ish lines to avoid spam
-          if (action.text.trim().length > 0) push(action.text, 'info');
+          // The streamed text IS the agent's real answer — accumulate it as the
+          // useful deliverable instead of spamming the battle log with fragments.
+          answer += action.text;
           break;
         case 'cast':
           hero.mp = Math.max(0, hero.mp - 8);
@@ -95,6 +102,6 @@ export const useBattle = create<Store>((set) => ({
           break;
       }
 
-      return { ...s, hero, boss, phase, round, log, sources, reportSummary, lastAction: action };
+      return { ...s, hero, boss, phase, round, log, sources, reportSummary, answer, lastAction: action };
     }),
 }));

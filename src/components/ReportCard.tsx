@@ -6,6 +6,7 @@ import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { useBattle } from '../battle/store';
 import { buildShareText, shareToX } from './shareToX';
+import { AnswerView } from './AnswerView';
 import type { SkillKind } from '../battle/types';
 
 // ── palette (matches App.tsx) ──────────────────────────────────────────────
@@ -26,6 +27,8 @@ const C = {
 export interface ReportCardProps {
   /** Called when the player starts a new quest. Defaults to store `reset()`. */
   onNewQuest?: () => void;
+  /** Dismiss the card without resetting the run (keeps the result on screen). */
+  onClose?: () => void;
   /**
    * Override the "skills cast" stat. When omitted it is derived from the log
    * (entries created by `cast` actions, which are prefixed with "✦").
@@ -47,13 +50,15 @@ function deriveClass(counts: Record<SkillKind, number>): string {
   return byKind[top[0]];
 }
 
-export function ReportCard({ onNewQuest, skillsCast }: ReportCardProps) {
+export function ReportCard({ onNewQuest, onClose, skillsCast }: ReportCardProps) {
   const phase = useBattle((s) => s.phase);
   const round = useBattle((s) => s.round);
   const hero = useBattle((s) => s.hero);
   const log = useBattle((s) => s.log);
   const sources = useBattle((s) => s.sources);
   const reportSummary = useBattle((s) => s.reportSummary);
+  const answer = useBattle((s) => s.answer);
+  const streamDone = useBattle((s) => s.streamDone);
   const reset = useBattle((s) => s.reset);
 
   const won = phase === 'victory';
@@ -156,18 +161,29 @@ export function ReportCard({ onNewQuest, skillsCast }: ReportCardProps) {
             {hero.name} · <span style={{ color: C.text }}>{agentClass}</span>
           </div>
         </div>
-        <div
-          style={{
-            fontSize: 11,
-            letterSpacing: '0.2em',
-            color: C.faint,
-            border: `1px solid ${C.border}`,
-            borderRadius: 6,
-            padding: '4px 8px',
-            textTransform: 'uppercase',
-          }}
-        >
-          AgentVerse
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8 }}>
+          {onClose && (
+            <button
+              onClick={onClose}
+              title="Close (keep result)"
+              style={{ background: 'rgba(0,0,0,0.3)', border: `1px solid ${C.border}`, color: C.dim, borderRadius: 8, padding: '4px 10px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12 }}
+            >
+              ✕
+            </button>
+          )}
+          <div
+            style={{
+              fontSize: 11,
+              letterSpacing: '0.2em',
+              color: C.faint,
+              border: `1px solid ${C.border}`,
+              borderRadius: 6,
+              padding: '4px 8px',
+              textTransform: 'uppercase',
+            }}
+          >
+            AgentVerse
+          </div>
         </div>
       </div>
 
@@ -227,44 +243,9 @@ export function ReportCard({ onNewQuest, skillsCast }: ReportCardProps) {
         {reportSummary || (won ? 'The problem was vanquished.' : 'The quest ends here… for now.')}
       </div>
 
-      {/* loot */}
+      {/* the real, useful result — answer + clickable sources */}
       <div style={{ marginTop: 16, flex: 1 }}>
-        <div style={{ fontSize: 12, color: C.dim, marginBottom: 8 }}>
-          🎒 Loot Collected {sources.length > 0 && <span style={{ color: C.faint }}>({sources.length})</span>}
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          {sources.length === 0 && (
-            <span style={{ color: C.faint, fontSize: 13 }}>No relics recovered this run.</span>
-          )}
-          {sources.slice(0, 4).map((src, i) => (
-            <motion.span
-              key={`${src}-${i}`}
-              initial={{ opacity: 0, scale: 0.7 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.35 + i * 0.08 }}
-              title={src}
-              style={{
-                maxWidth: 250,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-                fontSize: 12,
-                padding: '5px 10px',
-                borderRadius: 999,
-                background: 'rgba(124,92,255,0.14)',
-                border: `1px solid ${C.accent}`,
-                color: C.text,
-              }}
-            >
-              ✦ {prettySource(src)}
-            </motion.span>
-          ))}
-          {sources.length > 4 && (
-            <span style={{ fontSize: 12, color: C.dim, alignSelf: 'center' }}>
-              +{sources.length - 4} more
-            </span>
-          )}
-        </div>
+        <AnswerView answer={answer} sources={sources} maxHeight={170} streaming={!streamDone} />
       </div>
 
       {/* actions */}

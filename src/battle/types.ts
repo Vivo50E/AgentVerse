@@ -45,6 +45,8 @@ export interface BattleState {
   lastAction: BattleAction | null; // components watch this to fire animations
   sources: string[];               // citations = "loot"
   reportSummary: string;
+  answer: string;                  // the agent's real streamed answer (the useful output)
+  streamDone: boolean;             // true once the SSE stream has fully ended
 }
 
 /** Raw event shape we forward from the Vercel AI SDK fullStream over SSE. */
