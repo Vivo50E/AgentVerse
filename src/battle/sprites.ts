@@ -6,12 +6,26 @@ import type { BattleAction } from './types';
 export type Pose = 'idle' | 'attack' | 'hurt' | 'cast';
 export const POSES: Pose[] = ['idle', 'attack', 'hurt', 'cast'];
 
+/**
+ * A character's combat "effect archetype" — decided at design time (by the
+ * design agent) so a knight fights with steel slashes, a mage with arcane
+ * bolts, an archer with arrows, etc. Drives which VFX SpellFx renders.
+ */
+export type FxArchetype = 'arcane' | 'slash' | 'arrow' | 'fire' | 'lightning' | 'nature';
+export const FX_ARCHETYPES: FxArchetype[] = ['arcane', 'slash', 'arrow', 'fire', 'lightning', 'nature'];
+
+export interface FxProfile {
+  archetype: FxArchetype;
+}
+
 export interface CharacterSprites {
   name: string;
   /** pose -> image src (a /sprites/*.png path OR a data: URL from the designer). */
   poses: Record<Pose, string>;
   w: number;
   h: number;
+  /** Combat VFX archetype generated alongside the character (default: arcane). */
+  fx?: FxProfile;
 }
 
 export interface AssetManifest {

@@ -27,6 +27,27 @@ interface CharacterSprites {
   h: number;
 }
 
+// Combat VFX archetype — generated alongside the character so effects match it
+// (a knight slashes, a mage casts arcane bolts, an archer looses arrows...).
+type FxArchetype = 'arcane' | 'slash' | 'arrow' | 'fire' | 'lightning' | 'nature';
+const FX_ARCHETYPES: FxArchetype[] = ['arcane', 'slash', 'arrow', 'fire', 'lightning', 'nature'];
+
+/** Keyword fallback if the design agent doesn't return a valid archetype. */
+function classifyFx(text: string): FxArchetype {
+  const t = text.toLowerCase();
+  if (/(knight|warrior|paladin|sword|blade|samurai|barbarian|fighter|soldier|gladiator|melee|axe|spear|lance|brawler|monk|ronin|berserker)/.test(t)) return 'slash';
+  if (/(archer|ranger|hunter|bow|arrow|sniper|marksman|gun|crossbow|sharpshooter|rogue|assassin)/.test(t)) return 'arrow';
+  if (/(fire|flame|pyro|inferno|ember|magma|lava|dragon|phoenix|burning|blaze)/.test(t)) return 'fire';
+  if (/(lightning|thunder|storm|electric|shock|volt|tesla|spark|plasma)/.test(t)) return 'lightning';
+  if (/(nature|forest|druid|plant|vine|leaf|earth|poison|toxic|beast|shaman|ranger|bloom)/.test(t)) return 'nature';
+  return 'arcane'; // mage / wizard / sorcerer / psychic / default
+}
+
+function coerceFx(value: unknown, concept: string): FxArchetype {
+  const v = String(value ?? '').toLowerCase().trim() as FxArchetype;
+  return FX_ARCHETYPES.includes(v) ? v : classifyFx(concept);
+}
+
 // Deterministic fallbacks if the chat design-agent step fails.
 const FALLBACK_STYLES = [
   { label: 'Dark Tones', modifier: 'moody dark tones, dramatic shadows, muted palette' },
@@ -72,14 +93,18 @@ async function designAgent(
   angleIdx: number,
   target: string,
   feedback?: string,
-): Promise<{ label: string; prompt: string }> {
+): Promise<{ label: string; prompt: string; fx: FxArchetype }> {
   const feedbackLine = feedback
     ? `\nIncorporate this human feedback into the direction: "${feedback}".`
     : '';
   const sys =
     'You are a game art director. You produce a SINGLE image-generation prompt (one paragraph) ' +
-    'for a pixel-art character sprite sheet. Respond ONLY with strict JSON: ' +
-    '{"label":"<2-4 word style name>","prompt":"<one paragraph image prompt>"}. No markdown, no extra text.';
+    'for a pixel-art character sprite sheet, AND classify the character\'s combat effect style. ' +
+    'Respond ONLY with strict JSON: ' +
+    '{"label":"<2-4 word style name>","prompt":"<one paragraph image prompt>","fx":"<one of: arcane|slash|arrow|fire|lightning|nature>"}. ' +
+    'Pick fx by how the character fights: slash=melee/sword/warrior, arrow=ranged/bow/gun, ' +
+    'arcane=magic/mage/psychic, fire=flame/pyro, lightning=thunder/electric, nature=plant/beast/earth. ' +
+    'No markdown, no extra text.';
   const user =
     `Design candidate #${angleIdx + 1} for a ${target} character. Concept: "${concept}".` +
     ` Give it a DISTINCT art-direction/style angle that differs from other candidates.` +
@@ -108,7 +133,7 @@ async function designAgent(
   const prompt = String(parsed.prompt ?? '').trim();
   const label = String(parsed.label ?? '').trim();
   if (!prompt) throw new Error('designAgent: no prompt in JSON');
-  return { label: label || `Style ${angleIdx + 1}`, prompt };
+  return { label: label || `Style ${angleIdx + 1}`, prompt, fx: coerceFx(parsed.fx, concept) };
 }
 
 const dist = (r: number, g: number, b: number, k: { r: number; g: number; b: number }) =>
@@ -133,7 +158,7 @@ designRouter.post('/design', async (req, res) => {
     Array.from({ length: n }, (_, i) => designAgent(concept, i, target, feedback)),
   );
 
-  const specs: { label: string; prompt: string }[] = agentResults.map((r, i) => {
+  const specs: { label: string; prompt: string; fx: FxArchetype }[] = agentResults.map((r, i) => {
     if (r.status === 'fulfilled') return r.value;
     const fb = FALLBACK_STYLES[i % FALLBACK_STYLES.length];
     return {
@@ -141,6 +166,7 @@ designRouter.post('/design', async (req, res) => {
       prompt: `${BASE_SHEET_PROMPT}, subject: ${concept}, ${fb.modifier}${
         feedback ? `, ${feedback}` : ''
       }`,
+      fx: classifyFx(`${concept} ${feedback ?? ''}`),
     };
   });
 
@@ -150,10 +176,10 @@ designRouter.post('/design', async (req, res) => {
   const candidates = imgResults
     .map((r, i) =>
       r.status === 'fulfilled'
-        ? { id: `cand-${Date.now()}-${i}`, label: specs[i].label, url: r.value }
+        ? { id: `cand-${Date.now()}-${i}`, label: specs[i].label, url: r.value, fx: specs[i].fx }
         : null,
     )
-    .filter((c): c is { id: string; label: string; url: string } => c !== null);
+    .filter((c): c is { id: string; label: string; url: string; fx: FxArchetype } => c !== null);
 
   if (candidates.length === 0) {
     res.status(200).json({ candidates: [], error: 'all image generations failed' });

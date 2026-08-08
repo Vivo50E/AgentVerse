@@ -1,13 +1,15 @@
 // Client for the human-in-the-loop Character Design Studio backend.
 // Talks to POST /api/design (generate candidate sprite sheets) and
 // POST /api/design/finalize (slice + key the chosen sheet into pose PNGs).
-import type { CharacterSprites } from '../battle/sprites';
+import type { CharacterSprites, FxArchetype } from '../battle/sprites';
 
 /** A design candidate = a full 4-pose sprite SHEET to preview (JPEG on magenta). */
 export interface Candidate {
   id: string;
   label: string;
   url: string;
+  /** Combat VFX archetype the design agent chose for this character. */
+  fx?: FxArchetype;
 }
 
 interface DesignResponse {

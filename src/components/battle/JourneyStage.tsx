@@ -488,6 +488,7 @@ export function JourneyStage() {
         <SpellFx
           trigger={castTrigger}
           kind="cast"
+          archetype={heroSprites?.fx?.archetype}
           skill={lastSkill}
           originX={staffX}
           originY={staffY}
@@ -497,6 +498,7 @@ export function JourneyStage() {
         <SpellFx
           trigger={hitTrigger}
           kind="hit"
+          archetype={heroSprites?.fx?.archetype}
           skill={lastSkill}
           originX={staffX}
           originY={staffY}

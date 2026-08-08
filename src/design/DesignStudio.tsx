@@ -3,10 +3,21 @@
 //   concept -> summon candidates -> pick one -> (refine | use it) -> forge sprite.
 import { useCallback, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import type { CharacterSprites } from '../battle/sprites';
+import type { CharacterSprites, FxArchetype } from '../battle/sprites';
 import { useCharacters } from '../battle/characters';
 import { useHeroRoster } from '../heroes';
 import { finalizeDesign, requestDesigns, type Candidate } from './designApi';
+
+/** Client fallback: infer combat VFX archetype from the concept text. */
+function classifyFxClient(text: string): FxArchetype {
+  const t = text.toLowerCase();
+  if (/(knight|warrior|paladin|sword|blade|samurai|barbarian|fighter|soldier|gladiator|melee|axe|spear|lance|brawler|monk|ronin|berserker)/.test(t)) return 'slash';
+  if (/(archer|ranger|hunter|bow|arrow|sniper|marksman|gun|crossbow|sharpshooter|rogue|assassin)/.test(t)) return 'arrow';
+  if (/(fire|flame|pyro|inferno|ember|magma|lava|dragon|phoenix|burning|blaze)/.test(t)) return 'fire';
+  if (/(lightning|thunder|storm|electric|shock|volt|tesla|spark|plasma)/.test(t)) return 'lightning';
+  if (/(nature|forest|druid|plant|vine|leaf|earth|poison|toxic|beast|shaman|bloom)/.test(t)) return 'nature';
+  return 'arcane';
+}
 
 /* ---- palette (matches App.tsx aesthetic) ---- */
 const BG = '#0d0b1a';
@@ -103,6 +114,9 @@ export function DesignStudio({ onDone, target = 'hero' }: DesignStudioProps) {
     try {
       const finalName = name.trim() || selected.label || concept.trim() || `My ${kind}`;
       const sprites: CharacterSprites = await finalizeDesign(selected.url, finalName);
+      // Attach the combat VFX archetype generated with the character (agent's
+      // choice, or a keyword fallback) so effects match this hero, not the mage.
+      sprites.fx = { archetype: selected.fx ?? classifyFxClient(concept) };
       if (target === 'boss') useCharacters.getState().setBoss(sprites);
       else {
         useCharacters.getState().setHero(sprites);
