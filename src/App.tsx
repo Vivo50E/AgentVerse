@@ -7,18 +7,29 @@ import { QuestTrack } from './components/QuestTrack';
 import { ReportCard } from './components/ReportCard';
 import { AnswerView } from './components/AnswerView';
 import { SettingsPanel } from './components/SettingsPanel';
+import { GrokletGuide } from './components/GrokletGuide';
 import { DesignStudio } from './design';
 import { EquipmentPanel } from './loadout';
 import { HeroInventory } from './heroes';
 import { useBattleVoice, primeSpeech, speak } from './voice';
+import {
+  IconWand, IconSkull, IconRoster, IconLoadout, IconSettings, IconPlay, IconSwords,
+} from './components/icons';
 
 const PIXEL = "'Press Start 2P', ui-monospace, monospace";
 
+// Chamfered "pixel window" corner cut (clip-path clips outset shadows, so all
+// bevels/borders below are drawn with INSET shadows).
+const chamfer = (c: number): string =>
+  `polygon(0 ${c}px, ${c}px 0, calc(100% - ${c}px) 0, 100% ${c}px, 100% calc(100% - ${c}px), calc(100% - ${c}px) 100%, ${c}px 100%, 0 calc(100% - ${c}px))`;
+
+// A retro RPG window frame: cut corners + chunky double inset border + top
+// highlight, no rounded corners.
 const panel: React.CSSProperties = {
-  background: 'linear-gradient(180deg, rgba(32,25,64,0.72), rgba(15,11,34,0.72))',
-  border: '1px solid #3a2f66',
-  borderRadius: 16,
-  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 12px 44px rgba(0,0,0,0.4)',
+  background: 'linear-gradient(180deg, rgba(32,25,64,0.82), rgba(15,11,34,0.82))',
+  clipPath: chamfer(10),
+  boxShadow:
+    'inset 0 0 0 2px #4a3f7a, inset 0 0 0 4px #17122e, inset 0 3px 0 rgba(255,255,255,0.07), 0 14px 44px rgba(0,0,0,0.45)',
   backdropFilter: 'blur(8px)',
 };
 
@@ -26,23 +37,30 @@ function GameButton({ children, onClick, variant = 'ghost', disabled }: {
   children: React.ReactNode; onClick?: () => void; variant?: 'ghost' | 'primary' | 'gold'; disabled?: boolean;
 }) {
   const themes = {
-    ghost: { bg: 'linear-gradient(180deg,#2a2350,#1c1740)', bd: '#4a3f7a', fg: '#d9d3ff', glow: 'rgba(124,92,255,0.35)' },
-    primary: { bg: 'linear-gradient(180deg,#8f6dff,#6a45e0)', bd: '#b9a3ff', fg: '#fff', glow: 'rgba(124,92,255,0.7)' },
-    gold: { bg: 'linear-gradient(180deg,#ffd873,#e0a63a)', bd: '#fff0c2', fg: '#3a2600', glow: 'rgba(255,209,102,0.6)' },
+    ghost: { bg: 'linear-gradient(180deg,#2a2350,#1c1740)', bd: '#5a4f92', fg: '#d9d3ff', glow: 'rgba(124,92,255,0.30)' },
+    primary: { bg: 'linear-gradient(180deg,#8f6dff,#6a45e0)', bd: '#c3b0ff', fg: '#fff', glow: 'rgba(124,92,255,0.6)' },
+    gold: { bg: 'linear-gradient(180deg,#ffd873,#e0a63a)', bd: '#fff0c2', fg: '#3a2600', glow: 'rgba(255,209,102,0.55)' },
   }[variant];
   return (
-    <motion.button whileHover={disabled ? undefined : { scale: 1.04, y: -1 }} whileTap={disabled ? undefined : { scale: 0.97 }}
+    // Pixel-game feel: the button jumps on hover / sinks on press (no scale).
+    <motion.button
+      whileHover={disabled ? undefined : { y: -2 }}
+      whileTap={disabled ? undefined : { y: 1 }}
+      transition={{ type: 'tween', duration: 0.06 }}
       onClick={onClick} disabled={disabled}
       style={{
-        position: 'relative', overflow: 'hidden', padding: '11px 18px', borderRadius: 10,
-        border: `1px solid ${themes.bd}`, background: themes.bg, color: themes.fg, fontFamily: 'inherit',
+        position: 'relative', overflow: 'hidden', padding: '10px 16px',
+        clipPath: chamfer(5),
+        border: 'none', background: themes.bg, color: themes.fg, fontFamily: 'inherit',
         fontWeight: 700, letterSpacing: 0.4, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.55 : 1,
-        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.25), 0 4px 0 rgba(0,0,0,0.35), 0 0 16px ${themes.glow}`,
+        // 2px pixel border + top highlight + bottom bevel "lip" (all inset so the
+        // chamfer clip doesn't eat them), plus an outer glow ring.
+        boxShadow: `inset 0 0 0 2px ${themes.bd}, inset 0 2px 0 rgba(255,255,255,0.28), inset 0 -4px 0 rgba(0,0,0,0.32), 0 0 14px ${themes.glow}`,
       }}>
       {variant === 'primary' && !disabled && (
         <span style={{ position: 'absolute', inset: 0, background: 'linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.35) 50%, transparent 70%)', backgroundSize: '250% 100%', animation: 'sheen 2.6s linear infinite' }} />
       )}
-      <span style={{ position: 'relative' }}>{children}</span>
+      <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center', gap: 7 }}>{children}</span>
     </motion.button>
   );
 }
@@ -89,7 +107,8 @@ export function App() {
         }}>
           AgentVerse<span style={{ WebkitTextFillColor: 'initial' }}> ⚔️</span>
         </h1>
-        <GameButton onClick={() => setShowSettings(true)}>⚙ Settings</GameButton>
+        <GrokletGuide style={{ position: 'fixed', top: '120px', right: '40px', zIndex: 50 }} />
+        <GameButton onClick={() => setShowSettings(true)}><IconSettings size={15} /> Settings</GameButton>
       </div>
       <p style={{ margin: '0 0 22px', color: '#a79be0', fontSize: 13 }}>
         Watch your AI agent adventure through the problem — powered by Grok.
@@ -98,10 +117,10 @@ export function App() {
 
       {/* Action bar */}
       <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
-        <GameButton onClick={() => setDesigning('hero')}>✦ Design Hero</GameButton>
-        <GameButton onClick={() => setDesigning('boss')}>👹 Design Boss</GameButton>
-        <GameButton onClick={() => setShowHeroes(true)}>🎒 Heroes</GameButton>
-        <GameButton onClick={() => setLoadout(true)}>🧰 Loadout</GameButton>
+        <GameButton onClick={() => setDesigning('hero')}><IconWand size={15} /> Design Hero</GameButton>
+        <GameButton onClick={() => setDesigning('boss')}><IconSkull size={15} /> Design Boss</GameButton>
+        <GameButton onClick={() => setShowHeroes(true)}><IconRoster size={15} /> Heroes</GameButton>
+        <GameButton onClick={() => setLoadout(true)}><IconLoadout size={15} /> Loadout</GameButton>
       </div>
 
       {/* Quest console */}
@@ -110,7 +129,7 @@ export function App() {
         <input value={task} onChange={(e) => setTask(e.target.value)} placeholder="Give your agent a quest…" disabled={fighting}
           style={{ flex: 1, padding: '10px 8px', borderRadius: 8, border: 'none', background: 'transparent', color: '#fff', fontFamily: 'inherit', fontSize: 14, outline: 'none' }} />
         <GameButton variant="primary" disabled={fighting} onClick={startQuest}>
-          {fighting ? '⚔ Fighting…' : '▶ Start Quest'}
+          {fighting ? <><IconSwords size={15} /> Fighting…</> : <><IconPlay size={15} /> Start Quest</>}
         </GameButton>
       </div>
 
