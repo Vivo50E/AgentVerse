@@ -1,0 +1,42 @@
+{
+  "foe-slime": {
+    "poses": {
+      "idle": "/sprites/foe-slime-idle.png",
+      "attack": "/sprites/foe-slime-attack.png",
+      "hurt": "/sprites/foe-slime-hurt.png",
+      "cast": "/sprites/foe-slime-cast.png"
+    },
+    "w": 320,
+    "h": 720
+  },
+  "foe-goblin": {
+    "poses": {
+      "idle": "/sprites/foe-goblin-idle.png",
+      "attack": "/sprites/foe-goblin-attack.png",
+      "hurt": "/sprites/foe-goblin-hurt.png",
+      "cast": "/sprites/foe-goblin-cast.png"
+    },
+    "w": 320,
+    "h": 720
+  },
+  "foe-wraith": {
+    "poses": {
+      "idle": "/sprites/foe-wraith-idle.png",
+      "attack": "/sprites/foe-wraith-attack.png",
+      "hurt": "/sprites/foe-wraith-hurt.png",
+      "cast": "/sprites/foe-wraith-cast.png"
+    },
+    "w": 320,
+    "h": 720
+  },
+  "foe-golem": {
+    "poses": {
+      "idle": "/sprites/foe-golem-idle.png",
+      "attack": "/sprites/foe-golem-attack.png",
+      "hurt": "/sprites/foe-golem-hurt.png",
+      "cast": "/sprites/foe-golem-cast.png"
+    },
+    "w": 320,
+    "h": 720
+  }
+}
