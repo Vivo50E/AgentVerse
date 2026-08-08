@@ -113,6 +113,21 @@ Battle state machine (Zustand)  ── HP/MP, turn log, actor states
   App.tsx
 ```
 
+## 7b. Visual pivot — side-view pixel JRPG + HITL designer (v2)
+To make it more vivid, the battle is now a **side-view turn-based JRPG** (hero left, boss right, full-bleed pixel background) with **pronounced sprite action** (idle/attack/hurt/cast poses), plus a **human-in-the-loop character designer** so users co-create their hero with AI.
+
+**Proven asset pipeline (all validated against real Grok):**
+```
+grok-imagine-image → ONE sprite sheet (4 poses, same char, magenta bg)  [consistency solved by single-gen]
+   → jimp slice into 4 frames → chroma-key corner color → transparent PNGs
+   → composite over pixel background → swap pose + Framer Motion transform (lunge/shake/flash/cast)
+```
+- Grok images are JPEG (opaque) → generate on solid magenta, key it out. Verified clean cutouts.
+- Default assets pre-generated to `public/sprites/` (`npm run gen:assets`); battle works without the designer.
+- **HITL designer** = the one place we generate at runtime: parallel "design agents" propose varied prompts → candidate sheets → user picks/refines → finalize slices+keys → becomes the battle hero.
+- Shared contracts: `src/battle/sprites.ts` (poses + `poseForAction`), `src/battle/characters.ts` (active hero/boss store).
+- Built by parallel subagents: BattleStage rendering / DesignStudio UI / backend design endpoints.
+
 ## 8. Status
 - [x] Direction validated, competitors scanned, stack chosen
 - [x] Knowledge base written (`docs/kb/`)

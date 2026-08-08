@@ -4,9 +4,11 @@ import 'dotenv/config';
 import express from 'express';
 import { streamText } from 'ai';
 import { createXai } from '@ai-sdk/xai';
+import { designRouter } from './design';
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '10mb' })); // finalize returns base64 data URLs
+app.use('/api', designRouter); // human-in-the-loop character designer endpoints
 
 const xai = createXai({ apiKey: process.env.XAI_API_KEY });
 

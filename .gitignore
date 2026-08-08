@@ -7,3 +7,6 @@ dist
 
 # TS build cache
 *.tsbuildinfo
+
+# generated sprite-sheet intermediates (keep keyed PNGs + bg + manifest)
+public/sprites/*-sheet.jpg

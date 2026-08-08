@@ -1,0 +1,31 @@
+{
+  "hero": {
+    "name": "hero",
+    "poses": {
+      "idle": "/sprites/hero-idle.png",
+      "attack": "/sprites/hero-attack.png",
+      "hurt": "/sprites/hero-hurt.png",
+      "cast": "/sprites/hero-cast.png"
+    },
+    "w": 320,
+    "h": 720
+  },
+  "boss": {
+    "name": "boss",
+    "poses": {
+      "idle": "/sprites/boss-idle.png",
+      "attack": "/sprites/boss-attack.png",
+      "hurt": "/sprites/boss-hurt.png",
+      "cast": "/sprites/boss-cast.png"
+    },
+    "w": 320,
+    "h": 720
+  },
+  "background": "/sprites/bg.jpg",
+  "poses": [
+    "idle",
+    "attack",
+    "hurt",
+    "cast"
+  ]
+}
