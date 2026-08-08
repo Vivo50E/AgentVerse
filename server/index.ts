@@ -77,13 +77,6 @@ app.post('/api/run', async (req, res) => {
   res.end();
 });
 
-// TTS: not implemented for MVP. Returning 501 makes the frontend voice module
-// fall back to the browser Web Speech API (zero-latency, always available).
-// Post-hackathon: proxy a real TTS provider here and return audio bytes.
-app.post('/api/tts', (_req, res) => {
-  res.status(501).end();
-});
-
 // Share fallback: return a pre-filled X intent URL (no OAuth needed for MVP).
 app.post('/api/share', (req, res) => {
   const text: string = req.body?.text ?? 'My AI agent just won a quest in AgentVerse! ⚔️';

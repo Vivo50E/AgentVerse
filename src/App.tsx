@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useBattle } from './battle/store';
+import { useCharacters } from './battle/characters';
 import { runAgent } from './agent/run';
-import { JourneyStage } from './components/battle';
+import { JourneyStage, BossAwakening, type BossAwakeningPhase } from './components/battle';
 import { QuestTrack } from './components/QuestTrack';
 import { ReportCard } from './components/ReportCard';
 import { AnswerView } from './components/AnswerView';
@@ -10,9 +11,10 @@ import { AgentFlowView } from './components/AgentFlowView';
 import { SettingsPanel } from './components/SettingsPanel';
 import { GrokletGuide } from './components/GrokletGuide';
 import { DesignStudio } from './design';
+import { requestTaskBoss } from './design/designApi';
 import { EquipmentPanel } from './loadout';
 import { HeroInventory } from './heroes';
-import { useBattleVoice, primeSpeech, speak } from './voice';
+import { useBattleSfx, resumeAudio } from './sfx';
 import {
   IconWand, IconSkull, IconRoster, IconLoadout, IconSettings, IconPlay, IconSwords,
 } from './components/icons';
@@ -66,35 +68,69 @@ function GameButton({ children, onClick, variant = 'ghost', disabled }: {
   );
 }
 
-const readVoicePref = (): boolean => {
-  try { return localStorage.getItem('agentverse:voice') !== 'off'; } catch { return true; }
+const readSfxPref = (): boolean => {
+  try { return localStorage.getItem('agentverse:sfx') !== 'off'; } catch { return true; }
+};
+
+// Opt-in (plan.md §7d adds a ~5-10s wait before battle starts): off by default,
+// so the default experience stays fast; players who want the "wow" turn it on.
+const readThemedBossPref = (): boolean => {
+  try { return localStorage.getItem('agentverse:themedBoss') === 'on'; } catch { return false; }
 };
 
 export function App() {
   const [task, setTask] = useState('Research the biggest AI agent news this week');
-  const [voiceOn, setVoiceOn] = useState(readVoicePref); // ON by default
+  const [sfxOn, setSfxOn] = useState(readSfxPref); // ON by default
   const [designing, setDesigning] = useState<false | 'hero' | 'boss'>(false);
   const [loadout, setLoadout] = useState(false);
   const [showHeroes, setShowHeroes] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [logMode, setLogMode] = useState<'log' | 'flow'>('log');
   const [reportDismissed, setReportDismissed] = useState(false);
+  const [bossPhase, setBossPhase] = useState<BossAwakeningPhase>(null);
+  const [awakenedBossName, setAwakenedBossName] = useState<string | undefined>();
+  const [themedBossOn, setThemedBossOnState] = useState(readThemedBossPref);
   const { phase, round, log, answer, sources, streamDone } = useBattle();
 
-  useBattleVoice(voiceOn);
+  useBattleSfx(sfxOn);
 
-  const changeVoice = (v: boolean) => {
-    setVoiceOn(v);
-    try { localStorage.setItem('agentverse:voice', v ? 'on' : 'off'); } catch { /* ignore */ }
-    if (v) speak('Voice narration on'); // spoken inside the toggle gesture → confirms + unlocks the engine
+  const changeSfx = (v: boolean) => {
+    setSfxOn(v);
+    try { localStorage.setItem('agentverse:sfx', v ? 'on' : 'off'); } catch { /* ignore */ }
+  };
+
+  const changeThemedBoss = (v: boolean) => {
+    setThemedBossOnState(v);
+    try { localStorage.setItem('agentverse:themedBoss', v ? 'on' : 'off'); } catch { /* ignore */ }
   };
 
   const toneColor = { info: '#9d97c9', good: '#57d9a3', bad: '#ff6b81', crit: '#ffd166' } as const;
   const fighting = phase === 'fighting';
+  const summoningBoss = bossPhase !== null;
   const showReport = (phase === 'victory' || phase === 'defeat') && !reportDismissed;
-  const startQuest = () => {
+  const startQuest = async () => {
     setReportDismissed(false);
-    if (voiceOn) primeSpeech(); // unlock speech within this click so async battle lines can play
+    if (sfxOn) resumeAudio(); // unlock the audio context within this click (browser policy)
+
+    // Task-themed boss generation (plan.md §7d) — opt-in via Settings, since it
+    // adds a ~5-10s wait before the fight begins. Falls back to the default
+    // boss silently on failure/timeout, or immediately if the toggle is off.
+    if (themedBossOn) {
+      setBossPhase('summoning');
+      const { sprites } = await requestTaskBoss(task);
+      const chars = useCharacters.getState();
+      if (sprites) {
+        chars.setBoss(sprites);
+        setAwakenedBossName(sprites.name);
+        setBossPhase('revealed');
+        await new Promise((r) => setTimeout(r, 900));
+      } else {
+        chars.resetBoss();
+      }
+      setBossPhase(null);
+    } else {
+      useCharacters.getState().resetBoss();
+    }
     runAgent(task);
   };
 
@@ -128,10 +164,14 @@ export function App() {
       {/* Quest console */}
       <div style={{ ...panel, display: 'flex', gap: 12, padding: 12, marginBottom: 20, alignItems: 'center' }}>
         <span style={{ color: '#57d9a3', fontWeight: 700 }}>▸</span>
-        <input value={task} onChange={(e) => setTask(e.target.value)} placeholder="Give your agent a quest…" disabled={fighting}
+        <input value={task} onChange={(e) => setTask(e.target.value)} placeholder="Give your agent a quest…" disabled={fighting || summoningBoss}
           style={{ flex: 1, padding: '10px 8px', borderRadius: 8, border: 'none', background: 'transparent', color: '#fff', fontFamily: 'inherit', fontSize: 14, outline: 'none' }} />
-        <GameButton variant="primary" disabled={fighting} onClick={startQuest}>
-          {fighting ? <><IconSwords size={15} /> Fighting…</> : <><IconPlay size={15} /> Start Quest</>}
+        <GameButton variant="primary" disabled={fighting || summoningBoss} onClick={startQuest}>
+          {fighting
+            ? <><IconSwords size={15} /> Fighting…</>
+            : summoningBoss
+              ? <>🌑 Awakening foe…</>
+              : <><IconPlay size={15} /> Start Quest</>}
         </GameButton>
       </div>
 
@@ -189,6 +229,8 @@ export function App() {
       )}
 
       {/* Overlays */}
+      <BossAwakening phase={bossPhase} bossName={awakenedBossName} />
+
       <AnimatePresence>
         {showReport && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
@@ -216,7 +258,14 @@ export function App() {
 
       <AnimatePresence>
         {showSettings && (
-          <SettingsPanel key="settings" voiceOn={voiceOn} setVoiceOn={changeVoice} onClose={() => setShowSettings(false)} />
+          <SettingsPanel
+            key="settings"
+            sfxOn={sfxOn}
+            setSfxOn={changeSfx}
+            themedBossOn={themedBossOn}
+            setThemedBossOn={changeThemedBoss}
+            onClose={() => setShowSettings(false)}
+          />
         )}
       </AnimatePresence>
     </div>

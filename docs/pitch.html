@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AgentVerse • Watch your AI agent fight</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/theme/black.min.css">
+    <style>
+        :root {
+            --bg: #0d0b1a;
+            --accent: #7c5cff;
+            --green: #57d9a3;
+            --red: #ff6b81;
+            --gold: #ffd166;
+        }
+        
+        .reveal {
+            background: var(--bg);
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        
+        .reveal .slides section {
+            background: var(--bg);
+            color: #e0d4ff;
+        }
+        
+        .reveal h1, .reveal h2 {
+            color: #ffffff;
+            font-family: monospace;
+            text-shadow: 0 0 20px var(--accent);
+            letter-spacing: 2px;
+        }
+        
+        .reveal h1 {
+            font-size: 3.2em;
+            margin-bottom: 0.2em;
+        }
+        
+        .reveal .rpg-header {
+            font-family: monospace;
+            color: var(--gold);
+            font-size: 1.1em;
+            letter-spacing: 4px;
+            margin-bottom: 1em;
+            opacity: 0.9;
+        }
+        
+        .reveal .tagline {
+            font-size: 2.2em;
+            color: var(--green);
+            margin: 0.8em 0;
+            text-shadow: 0 0 30px var(--green);
+        }
+        
+        .reveal .hp-bar {
+            height: 12px;
+            background: #222;
+            border: 2px solid var(--accent);
+            margin: 20px auto;
+            width: 60%;
+            position: relative;
+        }
+        
+        .reveal .hp-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--green), #a0ffcc);
+            width: 85%;
+            box-shadow: 0 0 15px var(--green);
+        }
+        
+        .reveal ul {
+            display: inline-block;
+            text-align: left;
+            font-size: 1.3em;
+        }
+        
+        .reveal .skill {
+            color: var(--accent);
+            font-weight: bold;
+        }
+        
+        .reveal .crit {
+            color: var(--gold);
+            animation: crit-pulse 1.5s infinite;
+        }
+        
+        @keyframes crit-pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        
+        .reveal .matrix td, .reveal .matrix th {
+            padding: 12px 18px;
+            border: 1px solid #443366;
+            font-size: 0.95em;
+        }
+        
+        .reveal .matrix th {
+            background: #1a1428;
+            color: var(--gold);
+        }
+        
+        .reveal .footer {
+            position: absolute;
+            bottom: 30px;
+            right: 40px;
+            font-size: 0.7em;
+            color: #665588;
+            font-family: monospace;
+        }
+        
+        .reveal section[data-notes]:after {
+            content: attr(data-notes);
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            font-size: 0.65em;
+            background: rgba(20, 15, 45, 0.95);
+            padding: 15px;
+            border-left: 4px solid var(--accent);
+            text-align: left;
+            line-height: 1.4;
+            max-height: 35%;
+            overflow-y: auto;
+            display: none;
+        }
+        
+        .reveal .presenter-notes-visible section[data-notes]:after {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+
+            <!-- Slide 1: Title -->
+            <section data-notes="Hook (10 sec): Every AI agent is a hero. Every task is a boss fight. AgentVerse turns dry agent runs into real-time RPG battles you can watch, feel, and share. Built in 12 hours on Grok and the X API.">
+                <div class="rpg-header">GROK × X • HACKATHON PITCH</div>
+                <h1>AGENTVERSE</h1>
+                <p class="tagline">Watch your AI agent fight.</p>
+                <p style="font-size:1.6em; color:#a0a0cc; margin-top:2em;">A gamified observability layer for AI agents</p>
+                
+                <div style="margin-top: 4em; display: flex; justify-content: center; gap: 80px; font-family: monospace; font-size: 1.1em;">
+                    <div style="text-align:center;">
+                        <div style="color:#57d9a3;">HERO</div>
+                        <div class="hp-bar"><div class="hp-fill" style="width:92%; background:linear-gradient(90deg,#57d9a3,#a0ffcc);"></div></div>
+                    </div>
+                    <div style="text-align:center; color:var(--gold); font-size:2.5em; margin-top:20px;">⚔️</div>
+                    <div style="text-align:center;">
+                        <div style="color:#ff6b81;">BOSS</div>
+                        <div class="hp-bar"><div class="hp-fill" style="width:65%; background:linear-gradient(90deg,#ff6b81,#ff9a9a);"></div></div>
+                    </div>
+                </div>
+                
+                <div class="footer">BUILT IN 12 HOURS</div>
+            </section>
+
+            <!-- Slide 2: The Problem -->
+            <section data-notes="The problem: agent execution today is a black box. Tools like LangSmith and Langfuse give engineers dry traces — not stories. Builders can't feel why an agent succeeded or failed, and there's nothing shareable about a span tree. Observability needs a human layer.">
+                <div class="rpg-header">AGENTVERSE • 01 / PROBLEM</div>
+                <h2>Agents are black boxes</h2>
+                <p style="font-size:1.5em; max-width:800px; margin:1.5em auto;">Watching them work is <span style="color:#ff6b81;">opaque, boring,</span> and built only for engineers.</p>
+                
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:2em; margin-top:3em; font-size:0.95em;">
+                    <div style="background:rgba(30,20,50,0.6); padding:1.5em; border-left:4px solid #ff6b81;">
+                        <strong style="color:#ff6b81;">DRY LOGS</strong><br>
+                        Traces &amp; spans for engineers only
+                        <div style="margin-top:1em; font-family:monospace; color:#9988bb; font-size:0.85em;">&gt;&gt; span.timeout  err=null</div>
+                    </div>
+                    <div style="background:rgba(30,20,50,0.6); padding:1.5em; border-left:4px solid #ff6b81;">
+                        <strong style="color:#ff6b81;">NO STORY</strong><br>
+                        You can't feel why it failed
+                        <div style="margin-top:1em; font-family:monospace; color:#9988bb; font-size:0.85em;">&gt;&gt; span.timeout  err=null</div>
+                    </div>
+                    <div style="background:rgba(30,20,50,0.6); padding:1.5em; border-left:4px solid #ff6b81;">
+                        <strong style="color:#ff6b81;">UNSHAREABLE</strong><br>
+                        No one retweets a LangSmith trace
+                        <div style="margin-top:1em; font-family:monospace; color:#9988bb; font-size:0.85em;">&gt;&gt; span.timeout  err=null</div>
+                    </div>
+                </div>
+                <div class="footer">GROK × X • HACKATHON PITCH • BUILT IN 12H</div>
+            </section>
+
+            <!-- Slide 3: The Idea -->
+            <section data-notes="The idea in one line: what if watching an agent felt like watching a boss fight? The agent is the hero. The problem is the boss. Tool calls are skill casts. This is gamified observability — not a game for its own sake.">
+                <div class="rpg-header">AGENTVERSE • 02 / THE IDEA</div>
+                <h2 style="font-size:2.8em; line-height:1.1;">What if you could<br><span style="color:var(--gold);">watch your agent fight?</span></h2>
+                
+                <div style="margin-top:3em; display:flex; justify-content:center; gap:60px; font-size:1.6em; align-items:center;">
+                    <div style="text-align:center;">
+                        AGENT<br>
+                        <span style="font-size:3em; color:var(--accent);">→</span><br>
+                        <strong style="color:#57d9a3;">HERO</strong>
+                    </div>
+                    <div style="font-size:4em; color:var(--gold);">⚔️</div>
+                    <div style="text-align:center;">
+                        TASK<br>
+                        <span style="font-size:3em; color:var(--accent);">→</span><br>
+                        <strong style="color:#ff6b81;">BOSS</strong>
+                    </div>
+                </div>
+                
+                <p style="margin-top:3em; font-size:1.4em; color:#b0a0ff;">Tool calls become skill casts.<br>Not a toy game — a human-friendly window into agent execution.</p>
+                <div class="footer">GROK × X • HACKATHON PITCH • BUILT IN 12H</div>
+            </section>
+
+            <!-- Slide 4: How It Works -->
+            <section data-notes="Product mapping: every fullStream event becomes a battle action. Tool calls cast skills. Successes hit the boss. Failures hurt the hero. Citations are loot. The run ends in a victory or defeat report card you share to X.">
+                <div class="rpg-header">AGENTVERSE • 03 / PRODUCT</div>
+                <h2>Every run is a battle</h2>
+                
+                <table style="margin:2em auto; width:85%; border-collapse:collapse; font-size:1.05em;">
+                    <tr><td style="padding:8px 20px; color:var(--accent); font-weight:bold;">tool-call</td>
+                        <td style="font-size:2em; color:var(--gold);">→</td>
+                        <td><span class="skill">SKILL CAST</span><br><span style="color:#9988dd; font-size:0.9em;">web / x_search / code_execution</span></td></tr>
+                    <tr><td style="padding:8px 20px; color:var(--green);">tool-result ok</td>
+                        <td style="font-size:2em; color:var(--gold);">→</td>
+                        <td><span style="color:var(--green);">HIT / CRIT</span><br>boss HP drops</td></tr>
+                    <tr><td style="padding:8px 20px; color:var(--red);">error / retry</td>
+                        <td style="font-size:2em; color:var(--gold);">→</td>
+                        <td><span style="color:var(--red);">TAKE DAMAGE</span><br>hero HP drops</td></tr>
+                    <tr><td style="padding:8px 20px;">citations</td>
+                        <td style="font-size:2em; color:var(--gold);">→</td>
+                        <td><span style="color:var(--gold);">LOOT</span><br>intel drops</td></tr>
+                    <tr><td style="padding:8px 20px; color:#a0ccff;">finish</td>
+                        <td style="font-size:2em; color:var(--gold);">→</td>
+                        <td><strong>REPORT CARD</strong><br><span style="color:#7c5cff;">share to X</span></td></tr>
+                </table>
+                <div class="footer">GROK × X • HACKATHON PITCH • BUILT IN 12H</div>
+            </section>
+
+            <!-- Slide 5: Live Demo -->
+            <section data-notes="Demo driver: I'll give the agent a real quest. You'll see the battle play out live — Intel Summon from x_search, damage numbers, voice lines — then a shareable report card. If the network flakes, we have a recorded backup run.">
+                <div class="rpg-header">AGENTVERSE • 04 / LIVE DEMO</div>
+                <h2>One quest. One fight. One card.</h2>
+                
+                <div style="display:flex; justify-content:center; gap:40px; margin-top:3em; font-size:1.35em;">
+                    <div style="text-align:center; max-width:220px;">
+                        <div style="background:#1a1428; padding:12px; border:2px solid #7c5cff; border-radius:8px; margin-bottom:12px;">01</div>
+                        <strong>QUEST</strong><br>
+                        <span style="font-size:0.9em; color:#9988bb;">Give the agent a real task — research, debug, or ship a plan.</span>
+                    </div>
+                    <div style="text-align:center; max-width:220px;">
+                        <div style="background:#1a1428; padding:12px; border:2px solid var(--gold); border-radius:8px; margin-bottom:12px;">02</div>
+                        <strong>BATTLE</strong><br>
+                        <span style="font-size:0.9em; color:#9988bb;">Watch HP bars, skill casts, crits, damage numbers, and voice narration live.</span>
+                    </div>
+                    <div style="text-align:center; max-width:220px;">
+                        <div style="background:#1a1428; padding:12px; border:2px solid #57d9a3; border-radius:8px; margin-bottom:12px;">03</div>
+                        <strong>REPORT</strong><br>
+                        <span style="font-size:0.9em; color:#9988bb;">Victory card drops.<br>One tap shares the run to X.</span>
+                    </div>
+                </div>
+                <p style="margin-top:4em; color:var(--gold); font-size:1.4em;">Ready for the fight?</p>
+                <div class="footer">GROK × X • HACKATHON PITCH • BUILT IN 12H</div>
+            </section>
+
+            <!-- Slide 6: Powered by Grok & X -->
+            <section data-notes="Grok and X are the product, not a checkbox. Grok is the brain on fullStream. Native x_search is our signature skill — live X intel as combat advantage. web_search and code_execution are Forge skills. The report card closes the viral loop back to X. A fast Grok model also writes the announcer lines for TTS.">
+                <div class="rpg-header">AGENTVERSE • 05 / POWERED BY GROK &amp; X</div>
+                <h2>Powered by Grok &amp; X</h2>
+                <p style="font-size:1.4em; color:#b0a0ff; max-width:700px; margin:1em auto;">Not bolted on — the entire battle runs on <strong>native Grok tools</strong>.</p>
+                
+                <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:2em; margin-top:2.5em; max-width:900px; margin-left:auto; margin-right:auto;">
+                    <div style="background:rgba(40,25,70,0.5); padding:1.8em; border:2px solid var(--accent);">
+                        <div style="color:var(--gold); font-size:1.1em; margin-bottom:0.8em;">🧠 BRAIN</div>
+                        <strong>Grok fullStream</strong><br>
+                        <span style="font-size:0.9em;">Agent brain via Vercel AI SDK + @ai-sdk/xai.<br>Every event drives the fight.</span>
+                    </div>
+                    <div style="background:rgba(40,25,70,0.5); padding:1.8em; border:2px solid var(--gold);">
+                        <div style="color:var(--gold); font-size:1.1em; margin-bottom:0.8em;">⚡ SIGNATURE MOVE</div>
+                        <strong>X Intel Summon</strong><br>
+                        <span style="font-size:0.9em;">Native <code style="background:#221133; padding:2px 6px;">x_search</code> pulls live X posts as real-time intel — only X enables this.</span>
+                    </div>
+                    <div style="background:rgba(40,25,70,0.5); padding:1.8em; border:2px solid #57d9a3;">
+                        <div style="color:var(--gold); font-size:1.1em; margin-bottom:0.8em;">🛠️ SKILLS</div>
+                        <strong>web_search • code_execution</strong><br>
+                        <span style="font-size:0.9em;">Cast as in-game skills.<br>Success = damage to the boss.</span>
+                    </div>
+                    <div style="background:rgba(40,25,70,0.5); padding:1.8em; border:2px solid #ff6b81;">
+                        <div style="color:var(--gold); font-size:1.1em; margin-bottom:0.8em;">🔄 VIRAL LOOP</div>
+                        <strong>Share to X</strong><br>
+                        <span style="font-size:0.9em;">Battle report card posts to X.<br>Demo → share → more demos.</span>
+                    </div>
+                </div>
+                <div class="footer">GROK × X • HACKATHON PITCH • BUILT IN 12H</div>
+            </section>
+
+            <!-- Slide 7: Why We're Different -->
+            <section data-notes="Differentiation: LangSmith-class tools are dry and engineer-only. AgentCraft is RTS multi-agent management. We own RPG persona, entertainment value, and X virality — plus deep native Grok/X integration. Our moat is tone and narrative, not just another trace UI.">
+                <div class="rpg-header">AGENTVERSE • 06 / WHY WE'RE DIFFERENT</div>
+                <h2>Tone, narrative, shareability.</h2>
+                
+                <table class="matrix" style="margin:2.5em auto; width:92%; font-size:0.95em;">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th>Observability Tools</th>
+                            <th>AgentCraft</th>
+                            <th style="color:var(--gold); border:2px solid var(--gold);">AgentVerse</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Form</strong></td>
+                            <td>Traces / graphs</td>
+                            <td>RTS management</td>
+                            <td style="color:var(--green);"><strong>RPG battle</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Audience</strong></td>
+                            <td>Engineers only</td>
+                            <td>Experimenters</td>
+                            <td style="color:var(--green);"><strong>Builders + fans</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Feel</strong></td>
+                            <td>Dry / clinical</td>
+                            <td>Strategy sim</td>
+                            <td style="color:var(--green);"><strong>Persona + juice</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Virality</strong></td>
+                            <td>None</td>
+                            <td>Limited</td>
+                            <td style="color:var(--green);"><strong>Share-to-X card</strong></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Grok/X Integration</strong></td>
+                            <td>Generic</td>
+                            <td>Generic</td>
+                            <td style="color:var(--gold);"><strong>Native &amp; deep</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+                <p style="text-align:center; font-size:1.3em; color:var(--gold);">Our moat is tone, narrative, and deep Grok &amp; X integration.</p>
+                <div class="footer">GROK × X • HACKATHON PITCH • BUILT IN 12H</div>
+            </section>
+
+            <!-- Slide 8: Business & Vision -->
+            <section data-notes="Business: start as the delightful demo and observability layer for individual builders. Expand to team dashboards, multi-agent party views, and agent strength profiles. Web now; Mac desktop next via Tauri. Same buyers as observability — wider, less technical audience. No fake metrics.">
+                <div class="rpg-header">AGENTVERSE • 07 / VISION</div>
+                <h2>Wedge now. Universe later.</h2>
+                
+                <div style="display:flex; gap:4em; justify-content:center; margin-top:2em;">
+                    <div>
+                        <div style="color:var(--accent); font-size:1.4em; margin-bottom:0.8em;">NOW</div>
+                        <ul style="font-size:1.15em; line-height:1.7;">
+                            <li>Delight wedge for solo builders &amp; agent demos</li>
+                            <li>Web app MVP (live today)</li>
+                            <li>Shareable battle cards</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <div style="color:var(--gold); font-size:1.4em; margin-bottom:0.8em;">NEXT</div>
+                        <ul style="font-size:1.15em; line-height:1.7;">
+                            <li>Team "watch your agents" dashboards</li>
+                            <li>Multi-agent party views</li>
+                            <li>Mac desktop via Tauri</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <div style="color:#57d9a3; font-size:1.4em; margin-bottom:0.8em;">LATER</div>
+                        <ul style="font-size:1.15em; line-height:1.7;">
+                            <li>Agent strength / skill radar</li>
+                            <li>Help users pick &amp; tune agents</li>
+                            <li>Broader than eng-only tools</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="footer">GROK × X • HACKATHON PITCH • BUILT IN 12H</div>
+            </section>
+
+            <!-- Slide 9: Close -->
+            <section data-notes="Close: AgentVerse — watch your AI agent fight. A gamified observability layer, built in 12 hours on Grok and the X API. We're not asking for funding numbers — we're asking you to watch the fight, share the card, and imagine this as the human layer on every agent run. Final line: every agent deserves a boss fight. Thank you.">
+                <div style="height:80vh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;">
+                    <h1 style="font-size:4.2em; margin-bottom:0.2em;">AGENTVERSE</h1>
+                    <p class="tagline" style="font-size:2.4em;">Watch your AI agent fight.</p>
+                    <p style="font-size:1.6em; max-width:700px; margin:2em auto; color:#b0a0ff;">
+                        Gamified observability for AI agents — built in 12 hours on Grok &amp; X.
+                    </p>
+                    
+                    <div style="margin-top:3em; font-size:2.8em; color:var(--gold);">LET'S WATCH AGENTS FIGHT</div>
+                    
+                    <div style="margin-top:4em; font-size:1.4em; line-height:1.8; color:#9988cc;">
+                        Demo live &nbsp;·&nbsp; Share the card &nbsp;·&nbsp; Ship the layer<br><br>
+                        <span style="color:var(--green); font-size:1.6em;">Every agent deserves a boss fight.</span>
+                    </div>
+                </div>
+                <div class="footer" style="bottom:60px;">Thank you</div>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.6.0/reveal.min.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            transition: 'slide',
+            backgroundTransition: 'fade',
+            width: 1280,
+            height: 720,
+            margin: 0.1,
+            minScale: 0.8,
+            maxScale: 1.2,
+            controls: true,
+            progress: true,
+            slideNumber: true,
+            autoAnimateDuration: 0.6,
+            keyboard: {
+                80: () => { // 'P' key for presenter notes
+                    document.querySelector('.reveal').classList.toggle('presenter-notes-visible');
+                }
+            }
+        });
+        
+        // Press 'P' to toggle presenter notes visibility
+        console.log('%cAgentVerse Pitch Ready! Press P in presentation mode to toggle speaker notes.', 'color:#7c5cff; font-family:monospace;');
+    </script>
+</body>
+</html>

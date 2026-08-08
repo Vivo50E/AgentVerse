@@ -8,6 +8,9 @@
 //   2. POST /api/design/finalize  -> slice a chosen sheet into 4 poses, chroma-key the
 //                                     background to transparent, return base64 PNG data URLs.
 //   3. POST /api/design/bg        -> generate a battle/dungeon background image URL.
+//   4. POST /api/design/boss-for-task -> generate a boss themed to a quest task
+//                                     (name + concept via chat model, sprite via Grok
+//                                     Imagine), sliced+keyed the same way as #2.
 import express from 'express';
 import { Jimp } from 'jimp';
 
@@ -139,6 +142,66 @@ async function designAgent(
 const dist = (r: number, g: number, b: number, k: { r: number; g: number; b: number }) =>
   Math.sqrt((r - k.r) ** 2 + (g - k.g) ** 2 + (b - k.b) ** 2);
 
+/** Slice a fetched sheet image URL into 4 pose PNGs, chroma-keying the corner-sampled background. */
+async function sliceAndKeySheetUrl(url: string): Promise<{ poses: Record<Pose, string>; w: number; h: number }> {
+  const buf = Buffer.from(await (await fetch(url)).arrayBuffer());
+  const img = await Jimp.read(buf);
+  const fw = Math.floor(img.bitmap.width / POSES.length);
+  const fh = img.bitmap.height;
+  // Sample key color from the top-left corner (robust across generations).
+  const key = { r: img.bitmap.data[0], g: img.bitmap.data[1], b: img.bitmap.data[2] };
+  const tol = 72;
+
+  const poses = {} as Record<Pose, string>;
+  for (let f = 0; f < POSES.length; f++) {
+    const fr = img.clone().crop({ x: f * fw, y: 0, w: fw, h: fh });
+    fr.scan(0, 0, fr.bitmap.width, fr.bitmap.height, function (this: any, _x, _y, idx) {
+      if (dist(this.bitmap.data[idx], this.bitmap.data[idx + 1], this.bitmap.data[idx + 2], key) < tol) {
+        this.bitmap.data[idx + 3] = 0;
+      }
+    });
+    const pngBuf = await fr.getBuffer('image/png');
+    poses[POSES[f]] = `data:image/png;base64,${pngBuf.toString('base64')}`;
+  }
+  return { poses, w: fw, h: fh };
+}
+
+/**
+ * Turn a real quest task into a JRPG boss monster concept — the villain that
+ * visually represents the problem the agent is about to solve.
+ */
+async function bossConceptForTask(task: string): Promise<{ name: string; concept: string; fx: FxArchetype }> {
+  const sys =
+    'You are a game narrative designer. Turn a real-world task/problem into a JRPG boss monster ' +
+    "concept that visually personifies it as an adversary to defeat. Respond ONLY with strict JSON: " +
+    '{"name":"<2-4 word boss name>","concept":"<one sentence visual description of the monster>",' +
+    '"fx":"<one of: arcane|slash|arrow|fire|lightning|nature>"}. No markdown, no extra text.';
+  const user = `Task: "${task}". Invent a boss monster that represents this task as an enemy to defeat.`;
+
+  const res = await fetch(CHAT_URL, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${XAI_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: CHAT_MODEL,
+      messages: [
+        { role: 'system', content: sys },
+        { role: 'user', content: user },
+      ],
+      temperature: 0.9,
+    }),
+  });
+  const j: any = await res.json();
+  const content: string | undefined = j?.choices?.[0]?.message?.content;
+  if (!content) throw new Error('bossConceptForTask: empty completion');
+
+  const match = content.match(/\{[\s\S]*\}/);
+  const parsed = JSON.parse(match ? match[0] : content);
+  const concept = String(parsed.concept ?? '').trim();
+  const name = String(parsed.name ?? '').trim();
+  if (!concept) throw new Error('bossConceptForTask: no concept in JSON');
+  return { name: name || 'The Problem', concept, fx: coerceFx(parsed.fx, task) };
+}
+
 export const designRouter: express.Router = express.Router();
 
 // 1) Multi-agent design generation.
@@ -198,27 +261,8 @@ designRouter.post('/design/finalize', async (req, res) => {
   }
 
   try {
-    const buf = Buffer.from(await (await fetch(url)).arrayBuffer());
-    const img = await Jimp.read(buf);
-    const fw = Math.floor(img.bitmap.width / POSES.length);
-    const fh = img.bitmap.height;
-    // Sample key color from the top-left corner (robust across generations).
-    const key = { r: img.bitmap.data[0], g: img.bitmap.data[1], b: img.bitmap.data[2] };
-    const tol = 72;
-
-    const poses = {} as Record<Pose, string>;
-    for (let f = 0; f < POSES.length; f++) {
-      const fr = img.clone().crop({ x: f * fw, y: 0, w: fw, h: fh });
-      fr.scan(0, 0, fr.bitmap.width, fr.bitmap.height, function (this: any, _x, _y, idx) {
-        if (dist(this.bitmap.data[idx], this.bitmap.data[idx + 1], this.bitmap.data[idx + 2], key) < tol) {
-          this.bitmap.data[idx + 3] = 0;
-        }
-      });
-      const pngBuf = await fr.getBuffer('image/png');
-      poses[POSES[f]] = `data:image/png;base64,${pngBuf.toString('base64')}`;
-    }
-
-    const sprites: CharacterSprites = { name, poses, w: fw, h: fh };
+    const { poses, w, h } = await sliceAndKeySheetUrl(url);
+    const sprites: CharacterSprites = { name, poses, w, h };
     res.status(200).json({ sprites });
   } catch (e) {
     res.status(500).json({ error: String(e) });
@@ -234,6 +278,42 @@ designRouter.post('/design/bg', async (req, res) => {
   try {
     const url = await grokImage(prompt);
     res.status(200).json({ url });
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+  }
+});
+
+// 4) Task-themed boss: generate a boss whose name/appearance is themed to the
+// quest task, so every run's antagonist visually represents what it's actually about.
+designRouter.post('/design/boss-for-task', async (req, res) => {
+  const task: string = String(req.body?.task ?? '').trim();
+  if (!task) {
+    res.status(400).json({ error: 'task is required' });
+    return;
+  }
+
+  // Concept generation can fail independently of image generation — fall back
+  // to a generic-but-still-on-topic concept rather than aborting the whole run.
+  let name: string;
+  let concept: string;
+  let fx: FxArchetype;
+  try {
+    const c = await bossConceptForTask(task);
+    name = c.name;
+    concept = c.concept;
+    fx = c.fx;
+  } catch {
+    name = 'The Problem';
+    concept = `a monstrous embodiment of the challenge: ${task}`;
+    fx = classifyFx(task);
+  }
+
+  try {
+    const prompt = `${BASE_SHEET_PROMPT}, subject: a menacing JRPG boss monster, ${concept}`;
+    const url = await grokImage(prompt);
+    const { poses, w, h } = await sliceAndKeySheetUrl(url);
+    const sprites: CharacterSprites = { name, poses, w, h };
+    res.status(200).json({ sprites, fx });
   } catch (e) {
     res.status(500).json({ error: String(e) });
   }

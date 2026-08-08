@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgentVerse • Groklet Demo</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+        
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #0d0b1a 0%, #1a1428 100%);
+            color: #e0d4ff;
+            font-family: 'Press Start 2P', system-ui;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .stars {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: transparent url('https://assets.codepen.io/13471/stars.png') repeat;
+            opacity: 0.15;
+            animation: twinkle 8s infinite;
+            pointer-events: none;
+        }
+
+        .container {
+            text-align: center;
+            z-index: 10;
+            max-width: 800px;
+        }
+
+        .mascot {
+            width: 320px;
+            height: 320px;
+            margin: 0 auto 30px;
+            border: 6px solid #7c5cff;
+            border-radius: 50%;
+            overflow: hidden;
+            box-shadow: 0 0 60px #7c5cff,
+                        0 0 120px rgba(124, 92, 255, 0.4);
+            background: #120f26;
+            transition: all 0.4s ease;
+        }
+
+        .mascot:hover {
+            transform: scale(1.08) rotate(2deg);
+            box-shadow: 0 0 80px #ffd166;
+        }
+
+        .mascot img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        h1 {
+            font-size: 2.8em;
+            margin: 0 0 10px 0;
+            background: linear-gradient(90deg, #7c5cff, #57d9a3);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(124, 92, 255, 0.6);
+        }
+
+        .tagline {
+            font-size: 1.1em;
+            color: #a0ffcc;
+            margin-bottom: 40px;
+            letter-spacing: 2px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            flex-wrap: wrap;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        button {
+            background: #1a1428;
+            color: #e0d4ff;
+            border: 3px solid #7c5cff;
+            padding: 14px 24px;
+            font-family: 'Press Start 2P', sans-serif;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        button:hover {
+            background: #7c5cff;
+            color: white;
+            transform: translateY(-3px);
+        }
+
+        .log {
+            margin-top: 40px;
+            font-family: monospace;
+            background: rgba(20, 15, 45, 0.7);
+            padding: 15px;
+            border: 2px solid #443366;
+            min-height: 80px;
+            font-size: 0.95em;
+            color: #b0a0ff;
+            text-align: left;
+            max-width: 680px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .hp-bar {
+            height: 14px;
+            background: #222;
+            border: 3px solid #57d9a3;
+            width: 280px;
+            margin: 20px auto;
+            position: relative;
+        }
+
+        .hp-fill {
+            height: 100%;
+            width: 87%;
+            background: linear-gradient(90deg, #57d9a3, #a0ffcc);
+            box-shadow: 0 0 20px #57d9a3;
+        }
+    </style>
+</head>
+<body>
+    <div class="stars"></div>
+    
+    <div class="container">
+        <h1>AGENTVERSE</h1>
+        <p class="tagline">GROKLET PRESENTS</p>
+        
+        <div class="mascot" id="mascot">
+            <img id="mascot-img" src="/demo/groklet-astronaut-main.jpg" alt="Groklet">
+        </div>
+
+        <div class="hp-bar">
+            <div class="hp-fill"></div>
+        </div>
+
+        <div class="controls">
+            <button onclick="speakLine(0)">Hello, I'm Groklet!</button>
+            <button onclick="speakLine(1)">Watch your agent fight!</button>
+            <button onclick="speakLine(2)">Intel Summon!</button>
+            <button onclick="speakLine(3)">Critical Hit!</button>
+            <button onclick="speakLine(4)">Victory!</button>
+        </div>
+
+        <div class="log" id="log">
+            Click the buttons above to make Groklet speak. This is a live demo preview.
+        </div>
+    </div>
+
+    <script>
+        const images = {
+            main: "/demo/groklet-astronaut-main.jpg",
+            expressions: "/demo/groklet-astronaut-expressions.jpg"
+        };
+
+        const lines = [
+            "Hello everyone! I'm Groklet, the official mascot of Grok by xAI.",
+            "Welcome to AgentVerse! We turn AI agent workflows into epic RPG battles.",
+            "Using native Grok tools like x_search as my signature Intel Summon skill!",
+            "Critical Hit! The agent just solved a complex problem with style.",
+            "Victory achieved! Every agent deserves an epic boss fight."
+        ];
+
+        let currentImage = 0;
+
+        function speakLine(index) {
+            const log = document.getElementById('log');
+            const mascotImg = document.getElementById('mascot-img');
+            
+            log.textContent = lines[index];
+            
+            // Simple animation - switch to expressions image briefly
+            if (currentImage === 0) {
+                mascotImg.src = images.expressions;
+                currentImage = 1;
+                
+                setTimeout(() => {
+                    mascotImg.src = images.main;
+                    currentImage = 0;
+                }, 1800);
+            }
+            
+            // Visual feedback
+            const mascot = document.getElementById('mascot');
+            mascot.style.transform = 'scale(1.12)';
+            setTimeout(() => {
+                mascot.style.transform = 'scale(1)';
+            }, 300);
+        }
+
+        // Auto demo mode
+        let demoIndex = 0;
+        setInterval(() => {
+            if (Math.random() > 0.6) {
+                speakLine(demoIndex % lines.length);
+                demoIndex++;
+            }
+        }, 4500);
+
+        console.log('%cAgentVerse Groklet Demo Ready! Click the buttons to interact with the mascot.', 'color:#7c5cff; font-family:monospace; font-size:14px');
+    </script>
+</body>
+</html>

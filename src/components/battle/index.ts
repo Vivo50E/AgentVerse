@@ -15,3 +15,7 @@ export type { SpriteProps } from './Sprite';
 export { BattleStage } from './BattleStage';
 
 export { JourneyStage } from './JourneyStage';
+export { GrokletGuide } from '../GrokletGuide';
+
+export { BossAwakening } from './BossAwakening';
+export type { BossAwakeningPhase } from './BossAwakening';

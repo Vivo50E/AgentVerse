@@ -29,7 +29,7 @@ function initialState(): Omit<BattleState, never> {
 let flowId = 0;
 
 interface Store extends BattleState {
-  start: () => void;
+  start: (bossName?: string) => void;
   apply: (action: BattleAction) => void;
   endStream: () => void;
   reset: () => void;
@@ -38,7 +38,13 @@ interface Store extends BattleState {
 export const useBattle = create<Store>((set) => ({
   ...initialState(),
 
-  start: () => set({ ...initialState(), phase: 'fighting', round: 1 }),
+  start: (bossName) => {
+    const s = initialState();
+    // Task-themed boss generation (plan.md §7d) may have already renamed the
+    // boss sprite before the quest starts — carry that name into the actor.
+    if (bossName) s.boss = { ...s.boss, name: bossName };
+    return set({ ...s, phase: 'fighting', round: 1 });
+  },
 
   endStream: () => set({ streamDone: true }),
 

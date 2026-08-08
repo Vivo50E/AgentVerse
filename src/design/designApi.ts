@@ -22,9 +22,18 @@ interface FinalizeResponse {
   error?: string;
 }
 
+interface TaskBossResponse {
+  sprites?: CharacterSprites;
+  fx?: FxArchetype;
+  error?: string;
+}
+
 /** Generation is slow (~10-30s) and can fail — give it a generous timeout. */
 const DESIGN_TIMEOUT_MS = 60_000;
 const FINALIZE_TIMEOUT_MS = 60_000;
+// Quest start is blocked on this (the "boss awakening" beat) — cap it tighter
+// than the Design Studio's generous timeouts so a slow gen never stalls play.
+const TASK_BOSS_TIMEOUT_MS = 20_000;
 
 async function postJson<T>(url: string, body: unknown, timeoutMs: number): Promise<T> {
   const controller = new AbortController();
@@ -99,4 +108,30 @@ export async function finalizeDesign(url: string, name: string): Promise<Charact
   if (data.error) throw new Error(data.error);
   if (!data.sprites) throw new Error('The forge returned no sprite. Try again.');
   return data.sprites;
+}
+
+/**
+ * Generate a boss themed to a quest task (plan.md §7d) — name + appearance
+ * personify what the task is actually about. Never throws: on failure/timeout
+ * the caller should fall back to the default boss so quest start is never blocked.
+ */
+export async function requestTaskBoss(task: string): Promise<{ sprites?: CharacterSprites; error?: string }> {
+  try {
+    const data = await postJson<TaskBossResponse>(
+      '/api/design/boss-for-task',
+      { task },
+      TASK_BOSS_TIMEOUT_MS,
+    );
+    if (data.error || !data.sprites) return { error: data.error ?? 'no sprite returned' };
+    if (data.fx) data.sprites.fx = { archetype: data.fx };
+    return { sprites: data.sprites };
+  } catch (err) {
+    const aborted = err instanceof DOMException && err.name === 'AbortError';
+    const message = aborted
+      ? 'The boss took too long to awaken.'
+      : err instanceof Error
+        ? err.message
+        : 'Something went wrong summoning the boss.';
+    return { error: message };
+  }
 }

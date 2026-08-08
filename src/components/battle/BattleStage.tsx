@@ -7,6 +7,7 @@ import type { Actor, SkillKind } from '../../battle/types';
 import { DamageLayer } from './DamageLayer';
 import { SkillCast } from './SkillCast';
 import { Sprite } from './Sprite';
+import { GrokletGuide } from '../GrokletGuide';
 
 /** Retro segmented HP bar that floats above a battler. */
 function HpBar({ actor, color, align }: { actor: Actor; color: string; align: 'left' | 'right' }) {
@@ -220,6 +221,9 @@ export function BattleStage() {
 
       {/* Floating damage numbers overlay */}
       <DamageLayer />
+
+      {/* Groklet Guide - Independent Narrator / Helper System */}
+      <GrokletGuide />
     </div>
   );
 }

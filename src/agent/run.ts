@@ -1,14 +1,26 @@
 // Frontend: kick off an agent run and pipe SSE events into the battle store.
 import { mapEvent } from '../battle/eventMapper';
 import { useBattle } from '../battle/store';
+import { useCharacters } from '../battle/characters';
+import { matchBackground } from '../battle/backgroundMatch';
 import { useLoadout } from '../loadout';
 import { useProgression } from '../progression';
 import type { StreamEvent } from '../battle/types';
 
 export async function runAgent(task: string) {
   const { start, apply, endStream } = useBattle.getState();
-  start();
+  // If a task-themed boss (plan.md §7d) was generated before this call, its
+  // sprite name carries into the actor so the log/HP bar match what's on screen.
+  start(useCharacters.getState().boss?.name);
   useProgression.getState().clearAward(); // fresh quest, drop the previous level-up banner
+
+  // Pick the battle background whose theme best fits this task; falls back to
+  // the default dungeon if nothing matches (see src/battle/backgroundMatch.ts).
+  matchBackground(task).then((bg) => {
+    const chars = useCharacters.getState();
+    if (bg) chars.setBackground(bg);
+    else chars.resetBackground();
+  });
 
   // The equipped loadout decides which real tools the agent may wield.
   const tools = useLoadout.getState().getEnabledTools();

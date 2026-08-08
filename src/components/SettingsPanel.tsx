@@ -1,4 +1,4 @@
-// Settings modal — houses app preferences (voice narration, ...). Kept small
+// Settings modal — houses app preferences (sound effects, ...). Kept small
 // and extensible so more toggles can move here instead of cluttering the header.
 import { motion } from 'framer-motion';
 
@@ -44,8 +44,14 @@ function Row({ title, desc, control }: { title: string; desc: string; control: R
 }
 
 export function SettingsPanel({
-  voiceOn, setVoiceOn, onClose,
-}: { voiceOn: boolean; setVoiceOn: (v: boolean) => void; onClose: () => void }) {
+  sfxOn, setSfxOn, themedBossOn, setThemedBossOn, onClose,
+}: {
+  sfxOn: boolean;
+  setSfxOn: (v: boolean) => void;
+  themedBossOn: boolean;
+  setThemedBossOn: (v: boolean) => void;
+  onClose: () => void;
+}) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
       onClick={onClose}
@@ -59,9 +65,14 @@ export function SettingsPanel({
         </div>
         <div style={{ padding: '6px 18px 18px' }}>
           <Row
-            title="🔊 Voice narration"
-            desc="Announcer voices the battle. Starts after your first click (browser policy)."
-            control={<Toggle on={voiceOn} onChange={setVoiceOn} />}
+            title="🔊 Sound effects"
+            desc="Chiptune blips for skill casts, hits, and crits. Instant — no lag."
+            control={<Toggle on={sfxOn} onChange={setSfxOn} />}
+          />
+          <Row
+            title="👹 Task-themed boss"
+            desc="Grok summons a unique boss for your quest before the fight starts (~5-10s wait). Off = default boss, no wait."
+            control={<Toggle on={themedBossOn} onChange={setThemedBossOn} />}
           />
           <div style={{ color: '#7a72a8', fontSize: 11, marginTop: 14, textAlign: 'center' }}>
             More settings coming soon.
