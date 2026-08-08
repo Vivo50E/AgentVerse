@@ -6,7 +6,7 @@ import { BattleStage } from './components/battle';
 import { QuestTrack } from './components/QuestTrack';
 import { ReportCard } from './components/ReportCard';
 import { DesignStudio } from './design';
-import { CharacterSheet } from './loadout';
+import { EquipmentPanel } from './loadout';
 import { useBattleVoice } from './voice';
 
 export function App() {
@@ -89,7 +89,7 @@ export function App() {
 
       {/* Agent loadout / hexagon ability sheet */}
       <AnimatePresence>
-        {loadout && <CharacterSheet key="loadout" onClose={() => setLoadout(false)} />}
+        {loadout && <EquipmentPanel key="loadout" onClose={() => setLoadout(false)} />}
       </AnimatePresence>
     </div>
   );
