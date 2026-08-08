@@ -100,8 +100,11 @@ export const useBattle = create<Store>((set) => ({
           }
           break;
         case 'defeat':
-          phase = 'defeat';
-          push(`☠ Defeat: ${action.reason}`, 'bad');
+          // Never un-win a solved quest — a late error after victory is ignored.
+          if (phase === 'fighting') {
+            phase = 'defeat';
+            push(`☠ Defeat: ${action.reason}`, 'bad');
+          }
           break;
       }
 

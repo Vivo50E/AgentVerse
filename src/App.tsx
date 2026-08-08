@@ -139,8 +139,11 @@ export function App() {
       <AnimatePresence>
         {showReport && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(6,4,16,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
-            <ReportCard onClose={() => setReportDismissed(true)} />
+            onClick={() => setReportDismissed(true)}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(6,4,16,0.8)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', zIndex: 50, overflowY: 'auto', padding: '4vh 16px' }}>
+            <div onClick={(e) => e.stopPropagation()}>
+              <ReportCard onClose={() => setReportDismissed(true)} />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

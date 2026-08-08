@@ -54,6 +54,16 @@ export async function runAgent(task: string) {
   } catch (err) {
     apply({ type: 'defeat', reason: String(err) });
   } finally {
+    // Resolve the outcome if the stream ended without an explicit win: an
+    // answer means the agent solved it (victory), otherwise it's a real defeat.
+    const pending = useBattle.getState();
+    if (pending.phase === 'fighting') {
+      apply(
+        pending.answer.trim().length > 0
+          ? { type: 'victory', summary: 'Quest complete — the agent delivered its answer.' }
+          : { type: 'defeat', reason: 'the agent could not complete the quest' },
+      );
+    }
     endStream(); // the agent's answer + sources are now final
     // Award XP + learned growth from what the agent actually did this quest.
     const b = useBattle.getState();

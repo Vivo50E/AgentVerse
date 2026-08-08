@@ -51,7 +51,10 @@ export function mapEvent(ev: StreamEvent): BattleAction | null {
       };
 
     case 'error':
-      return { type: 'defeat', reason: ev.errorMessage ?? 'unknown error' };
+      // A mid-stream error (e.g. a flaky tool call) is a scratch, not a loss —
+      // the agent takes some damage but the quest continues. True failure is
+      // decided at the end of the run (see runAgent), not by a transient error.
+      return { type: 'agent_hurt', damage: 8, reason: ev.errorMessage ?? 'a spell fizzled' };
 
     default:
       return null;

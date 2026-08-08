@@ -9,7 +9,6 @@ import { useProgression, xpToNext } from '../progression';
 import { STAT_LABELS } from '../loadout/types';
 import type { Stat as StatKey } from '../loadout/types';
 import { buildShareText, shareToX } from './shareToX';
-import { AnswerView } from './AnswerView';
 import type { SkillKind } from '../battle/types';
 
 // ── palette (matches App.tsx) ──────────────────────────────────────────────
@@ -60,7 +59,6 @@ export function ReportCard({ onNewQuest, onClose, skillsCast }: ReportCardProps)
   const log = useBattle((s) => s.log);
   const sources = useBattle((s) => s.sources);
   const reportSummary = useBattle((s) => s.reportSummary);
-  const answer = useBattle((s) => s.answer);
   const streamDone = useBattle((s) => s.streamDone);
   const reset = useBattle((s) => s.reset);
 
@@ -388,9 +386,27 @@ export function ReportCard({ onNewQuest, onClose, skillsCast }: ReportCardProps)
         {reportSummary || (won ? 'The problem was vanquished.' : 'The quest ends here… for now.')}
       </div>
 
-      {/* the real, useful result — answer + clickable sources */}
-      <div style={{ marginTop: 16, flex: 1 }}>
-        <AnswerView answer={answer} sources={sources} maxHeight={170} streaming={!streamDone} />
+      {/* Pointer to the full result — the answer + sources live in the page
+          panel below so this card stays compact and fully on-screen. */}
+      <div
+        style={{
+          marginTop: 16,
+          padding: '12px 14px',
+          background: 'rgba(87,217,163,0.08)',
+          border: `1px solid ${C.good}55`,
+          borderRadius: 10,
+          fontSize: 13,
+          color: C.text,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+        }}
+      >
+        <span style={{ fontSize: 18 }}>📜</span>
+        <span>
+          {streamDone ? 'Full answer' : 'Answer streaming in'} · <b>{sources.length}</b> sources —{' '}
+          <span style={{ color: C.good }}>see “Quest Result” below ↓</span>
+        </span>
       </div>
 
       {/* actions */}
