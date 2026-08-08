@@ -44,16 +44,20 @@ export function HexRadar({ stats, size = 320 }: { stats: Record<Stat, number>; s
   const cy = size / 2;
   const maxR = size * 0.34;
   const labelR = maxR + size * 0.11;
+  // Reserve margin so the diagonal axis labels ("Reasoning", "Knowledge") don't
+  // clip against the SVG bounds. Rendered footprint grows by these paddings.
+  const PAD = 64;
+  const PADV = 14;
 
   const rings = [1, 0.66, 0.33];
   const shape = statPath(cx, cy, maxR, stats);
 
   return (
     <svg
-      width={size}
-      height={size}
-      viewBox={`0 0 ${size} ${size}`}
-      style={{ display: 'block', fontFamily: 'ui-monospace, monospace' }}
+      width={size + PAD * 2}
+      height={size + PADV * 2}
+      viewBox={`${-PAD} ${-PADV} ${size + PAD * 2} ${size + PADV * 2}`}
+      style={{ display: 'block', overflow: 'visible', fontFamily: 'ui-monospace, monospace' }}
     >
       {/* concentric hexagon rings */}
       {rings.map((r, idx) => (
