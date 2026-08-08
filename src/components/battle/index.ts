@@ -13,3 +13,5 @@ export { Sprite } from './Sprite';
 export type { SpriteProps } from './Sprite';
 
 export { BattleStage } from './BattleStage';
+
+export { JourneyStage } from './JourneyStage';

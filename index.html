@@ -4,8 +4,79 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AgentVerse ⚔️</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #0b0918;
+        --accent: #7c5cff;
+        --accent2: #b06bff;
+        --gold: #ffd166;
+        --good: #57d9a3;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--bg);
+        color: #e6e2ff;
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        min-height: 100vh;
+        overflow-x: hidden;
+      }
+      /* Animated aurora backdrop */
+      #root::before {
+        content: '';
+        position: fixed;
+        inset: -20%;
+        z-index: -2;
+        background:
+          radial-gradient(40% 50% at 20% 15%, rgba(124, 92, 255, 0.28), transparent 60%),
+          radial-gradient(45% 55% at 85% 20%, rgba(176, 107, 255, 0.22), transparent 60%),
+          radial-gradient(50% 60% at 60% 90%, rgba(87, 217, 163, 0.14), transparent 65%),
+          linear-gradient(180deg, #0b0918 0%, #0d0b1e 100%);
+        background-size: 200% 200%;
+        animation: aurora 22s ease-in-out infinite;
+        filter: saturate(1.1);
+      }
+      /* Faint scanline / grid vignette */
+      #root::after {
+        content: '';
+        position: fixed;
+        inset: 0;
+        z-index: -1;
+        pointer-events: none;
+        background:
+          radial-gradient(circle at 50% 40%, transparent 55%, rgba(0, 0, 0, 0.55) 100%),
+          repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.015) 0 1px, transparent 1px 3px);
+      }
+      @keyframes aurora {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+      @keyframes titleGlow {
+        0%, 100% { filter: drop-shadow(0 0 10px rgba(124, 92, 255, 0.55)); }
+        50% { filter: drop-shadow(0 0 20px rgba(176, 107, 255, 0.9)); }
+      }
+      @keyframes blink { 50% { opacity: 0; } }
+      @keyframes floatY {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-6px); }
+      }
+      @keyframes sheen {
+        0% { background-position: -150% 0; }
+        100% { background-position: 250% 0; }
+      }
+      ::-webkit-scrollbar { width: 10px; height: 10px; }
+      ::-webkit-scrollbar-thumb { background: #3a2f66; border-radius: 6px; }
+      ::-webkit-scrollbar-track { background: #140f2c; }
+    </style>
   </head>
-  <body style="margin:0;background:#0d0b1a;">
+  <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

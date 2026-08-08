@@ -2,12 +2,47 @@ import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useBattle } from './battle/store';
 import { runAgent } from './agent/run';
-import { BattleStage } from './components/battle';
+import { JourneyStage } from './components/battle';
 import { QuestTrack } from './components/QuestTrack';
 import { ReportCard } from './components/ReportCard';
 import { DesignStudio } from './design';
 import { EquipmentPanel } from './loadout';
 import { useBattleVoice } from './voice';
+
+const PIXEL = "'Press Start 2P', ui-monospace, monospace";
+
+const panel: React.CSSProperties = {
+  background: 'linear-gradient(180deg, rgba(32,25,64,0.72), rgba(15,11,34,0.72))',
+  border: '1px solid #3a2f66',
+  borderRadius: 16,
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.06), 0 12px 44px rgba(0,0,0,0.4)',
+  backdropFilter: 'blur(8px)',
+};
+
+function GameButton({ children, onClick, variant = 'ghost', disabled }: {
+  children: React.ReactNode; onClick?: () => void; variant?: 'ghost' | 'primary' | 'gold'; disabled?: boolean;
+}) {
+  const themes = {
+    ghost: { bg: 'linear-gradient(180deg,#2a2350,#1c1740)', bd: '#4a3f7a', fg: '#d9d3ff', glow: 'rgba(124,92,255,0.35)' },
+    primary: { bg: 'linear-gradient(180deg,#8f6dff,#6a45e0)', bd: '#b9a3ff', fg: '#fff', glow: 'rgba(124,92,255,0.7)' },
+    gold: { bg: 'linear-gradient(180deg,#ffd873,#e0a63a)', bd: '#fff0c2', fg: '#3a2600', glow: 'rgba(255,209,102,0.6)' },
+  }[variant];
+  return (
+    <motion.button whileHover={disabled ? undefined : { scale: 1.04, y: -1 }} whileTap={disabled ? undefined : { scale: 0.97 }}
+      onClick={onClick} disabled={disabled}
+      style={{
+        position: 'relative', overflow: 'hidden', padding: '11px 18px', borderRadius: 10,
+        border: `1px solid ${themes.bd}`, background: themes.bg, color: themes.fg, fontFamily: 'inherit',
+        fontWeight: 700, letterSpacing: 0.4, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.55 : 1,
+        boxShadow: `inset 0 1px 0 rgba(255,255,255,0.25), 0 4px 0 rgba(0,0,0,0.35), 0 0 16px ${themes.glow}`,
+      }}>
+      {variant === 'primary' && !disabled && (
+        <span style={{ position: 'absolute', inset: 0, background: 'linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.35) 50%, transparent 70%)', backgroundSize: '250% 100%', animation: 'sheen 2.6s linear infinite' }} />
+      )}
+      <span style={{ position: 'relative' }}>{children}</span>
+    </motion.button>
+  );
+}
 
 export function App() {
   const [task, setTask] = useState('Research the biggest AI agent news this week');
@@ -16,78 +51,89 @@ export function App() {
   const [loadout, setLoadout] = useState(false);
   const { phase, round, log } = useBattle();
 
-  useBattleVoice(voiceOn); // narration (needs the toggle as the user gesture)
+  useBattleVoice(voiceOn);
 
   const toneColor = { info: '#9d97c9', good: '#57d9a3', bad: '#ff6b81', crit: '#ffd166' } as const;
   const fighting = phase === 'fighting';
   const showReport = phase === 'victory' || phase === 'defeat';
 
-  const btn = (bg: string): React.CSSProperties => ({
-    padding: '10px 16px', borderRadius: 8, border: 0, background: bg, color: '#fff', fontWeight: 700,
-    cursor: 'pointer', fontFamily: 'inherit',
-  });
-
   return (
-    <div style={{ fontFamily: 'ui-monospace, monospace', color: '#e6e2ff', padding: 24, minHeight: '100vh', maxWidth: 820, margin: '0 auto' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
-        <h1 style={{ margin: '0 0 4px' }}>AgentVerse ⚔️</h1>
-        <button onClick={() => setVoiceOn((v) => !v)}
-          style={{ background: 'none', border: '1px solid #3a3260', color: voiceOn ? '#57d9a3' : '#9d97c9', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontFamily: 'inherit' }}>
-          {voiceOn ? '🔊 Voice on' : '🔈 Voice off'}
-        </button>
+    <div style={{ color: '#e6e2ff', padding: '28px 24px 48px', minHeight: '100vh', maxWidth: 900, margin: '0 auto', position: 'relative' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6, flexWrap: 'wrap', gap: 12 }}>
+        <h1 style={{
+          margin: 0, fontFamily: PIXEL, fontSize: 30, lineHeight: 1.2,
+          background: 'linear-gradient(90deg,#b9a3ff,#7c5cff 40%,#57d9a3)', WebkitBackgroundClip: 'text',
+          backgroundClip: 'text', color: 'transparent', animation: 'titleGlow 4s ease-in-out infinite',
+        }}>
+          AgentVerse<span style={{ WebkitTextFillColor: 'initial' }}> ⚔️</span>
+        </h1>
+        <GameButton onClick={() => setVoiceOn((v) => !v)} variant={voiceOn ? 'gold' : 'ghost'}>
+          {voiceOn ? '🔊 Voice ON' : '🔈 Voice'}
+        </GameButton>
       </div>
-      <p style={{ margin: '0 0 16px', color: '#9d97c9' }}>
-        Watch your AI agent battle the problem — powered by Grok.{phase !== 'idle' && ` · Round ${round}`}
+      <p style={{ margin: '0 0 22px', color: '#a79be0', fontSize: 13 }}>
+        Watch your AI agent adventure through the problem — powered by Grok.
+        {phase !== 'idle' && <span style={{ color: '#ffd166' }}>{'  ·  Round ' + round}</span>}
       </p>
 
-      <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
-        <button onClick={() => setDesigning('hero')} style={btn('#2a2450')}>✦ Design your hero</button>
-        <button onClick={() => setDesigning('boss')} style={btn('#2a2450')}>👹 Design the boss</button>
-        <button onClick={() => setLoadout(true)} style={btn('#2a2450')}>⚙ Loadout</button>
+      {/* Action bar */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 14, flexWrap: 'wrap' }}>
+        <GameButton onClick={() => setDesigning('hero')}>✦ Design Hero</GameButton>
+        <GameButton onClick={() => setDesigning('boss')}>👹 Design Boss</GameButton>
+        <GameButton onClick={() => setLoadout(true)}>⚙ Loadout</GameButton>
       </div>
 
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
+      {/* Quest console */}
+      <div style={{ ...panel, display: 'flex', gap: 12, padding: 12, marginBottom: 20, alignItems: 'center' }}>
+        <span style={{ color: '#57d9a3', fontWeight: 700 }}>▸</span>
         <input value={task} onChange={(e) => setTask(e.target.value)} placeholder="Give your agent a quest…" disabled={fighting}
-          style={{ flex: 1, padding: 12, borderRadius: 8, border: '1px solid #3a3260', background: '#181430', color: '#fff', fontFamily: 'inherit' }} />
-        <button onClick={() => runAgent(task)} disabled={fighting} style={{ ...btn(fighting ? '#463a7a' : '#7c5cff'), padding: '12px 20px', cursor: fighting ? 'default' : 'pointer' }}>
-          {fighting ? 'Fighting…' : 'Start Quest'}
-        </button>
+          style={{ flex: 1, padding: '10px 8px', borderRadius: 8, border: 'none', background: 'transparent', color: '#fff', fontFamily: 'inherit', fontSize: 14, outline: 'none' }} />
+        <GameButton variant="primary" disabled={fighting} onClick={() => runAgent(task)}>
+          {fighting ? '⚔ Fighting…' : '▶ Start Quest'}
+        </GameButton>
       </div>
 
-      {/* Quest progress track + side-view JRPG battle stage. */}
-      <div style={{ marginBottom: 20 }}>
+      {/* Quest track + journey stage */}
+      <div style={{ ...panel, padding: 14, marginBottom: 20 }}>
         <QuestTrack />
         <div style={{ marginTop: 12 }}>
-          <BattleStage />
+          <JourneyStage />
         </div>
       </div>
 
-      <div style={{ height: 220, overflowY: 'auto', background: '#120f26', border: '1px solid #2a2450', borderRadius: 10, padding: 14 }}>
-        <AnimatePresence initial={false}>
-          {log.map((e) => (
-            <motion.div key={e.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
-              style={{ color: toneColor[e.tone], fontSize: 14, padding: '3px 0' }}>
-              <span style={{ opacity: 0.4 }}>R{e.round} </span>{e.text}
-            </motion.div>
-          ))}
-        </AnimatePresence>
-        {log.length === 0 && <span style={{ color: '#655e90' }}>Battle log will appear here…</span>}
+      {/* Battle log */}
+      <div style={{ ...panel, overflow: 'hidden' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '9px 14px', borderBottom: '1px solid #3a2f66', background: 'linear-gradient(180deg,#2a2350,#1c1740)', fontFamily: PIXEL, fontSize: 10, letterSpacing: 1, color: '#b9a3ff' }}>
+          ⚔ BATTLE LOG
+        </div>
+        <div style={{ height: 220, overflowY: 'auto', padding: 14 }}>
+          <AnimatePresence initial={false}>
+            {log.map((e) => (
+              <motion.div key={e.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }}
+                style={{ color: toneColor[e.tone], fontSize: 13, padding: '3px 0', textShadow: e.tone === 'crit' ? '0 0 8px #ffd16688' : 'none' }}>
+                <span style={{ opacity: 0.4 }}>R{e.round} </span>{e.text}
+              </motion.div>
+            ))}
+          </AnimatePresence>
+          {log.length === 0 && (
+            <span style={{ color: '#655e90' }}>Battle log will appear here<span style={{ animation: 'blink 1s step-end infinite' }}>▌</span></span>
+          )}
+        </div>
       </div>
 
-      {/* Victory / defeat report card */}
+      {/* Overlays */}
       <AnimatePresence>
         {showReport && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(6,4,16,0.78)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
+            style={{ position: 'fixed', inset: 0, background: 'rgba(6,4,16,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50 }}>
             <ReportCard />
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* Human-in-the-loop character designer */}
       {designing && <DesignStudio target={designing} onDone={() => setDesigning(false)} />}
 
-      {/* Agent loadout / hexagon ability sheet */}
       <AnimatePresence>
         {loadout && <EquipmentPanel key="loadout" onClose={() => setLoadout(false)} />}
       </AnimatePresence>
