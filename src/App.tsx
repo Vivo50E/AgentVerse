@@ -6,6 +6,7 @@ import { JourneyStage } from './components/battle';
 import { QuestTrack } from './components/QuestTrack';
 import { ReportCard } from './components/ReportCard';
 import { AnswerView } from './components/AnswerView';
+import { SettingsPanel } from './components/SettingsPanel';
 import { DesignStudio } from './design';
 import { EquipmentPanel } from './loadout';
 import { HeroInventory } from './heroes';
@@ -46,16 +47,26 @@ function GameButton({ children, onClick, variant = 'ghost', disabled }: {
   );
 }
 
+const readVoicePref = (): boolean => {
+  try { return localStorage.getItem('agentverse:voice') !== 'off'; } catch { return true; }
+};
+
 export function App() {
   const [task, setTask] = useState('Research the biggest AI agent news this week');
-  const [voiceOn, setVoiceOn] = useState(false);
+  const [voiceOn, setVoiceOn] = useState(readVoicePref); // ON by default
   const [designing, setDesigning] = useState<false | 'hero' | 'boss'>(false);
   const [loadout, setLoadout] = useState(false);
   const [showHeroes, setShowHeroes] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [reportDismissed, setReportDismissed] = useState(false);
   const { phase, round, log, answer, sources, streamDone } = useBattle();
 
   useBattleVoice(voiceOn);
+
+  const changeVoice = (v: boolean) => {
+    setVoiceOn(v);
+    try { localStorage.setItem('agentverse:voice', v ? 'on' : 'off'); } catch { /* ignore */ }
+  };
 
   const toneColor = { info: '#9d97c9', good: '#57d9a3', bad: '#ff6b81', crit: '#ffd166' } as const;
   const fighting = phase === 'fighting';
@@ -73,9 +84,7 @@ export function App() {
         }}>
           AgentVerse<span style={{ WebkitTextFillColor: 'initial' }}> ⚔️</span>
         </h1>
-        <GameButton onClick={() => setVoiceOn((v) => !v)} variant={voiceOn ? 'gold' : 'ghost'}>
-          {voiceOn ? '🔊 Voice ON' : '🔈 Voice'}
-        </GameButton>
+        <GameButton onClick={() => setShowSettings(true)}>⚙ Settings</GameButton>
       </div>
       <p style={{ margin: '0 0 22px', color: '#a79be0', fontSize: 13 }}>
         Watch your AI agent adventure through the problem — powered by Grok.
@@ -87,7 +96,7 @@ export function App() {
         <GameButton onClick={() => setDesigning('hero')}>✦ Design Hero</GameButton>
         <GameButton onClick={() => setDesigning('boss')}>👹 Design Boss</GameButton>
         <GameButton onClick={() => setShowHeroes(true)}>🎒 Heroes</GameButton>
-        <GameButton onClick={() => setLoadout(true)}>⚙ Loadout</GameButton>
+        <GameButton onClick={() => setLoadout(true)}>🧰 Loadout</GameButton>
       </div>
 
       {/* Quest console */}
@@ -159,6 +168,12 @@ export function App() {
 
       <AnimatePresence>
         {loadout && <EquipmentPanel key="loadout" onClose={() => setLoadout(false)} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showSettings && (
+          <SettingsPanel key="settings" voiceOn={voiceOn} setVoiceOn={changeVoice} onClose={() => setShowSettings(false)} />
+        )}
       </AnimatePresence>
     </div>
   );

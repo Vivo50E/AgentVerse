@@ -136,7 +136,7 @@ export function ReportCard({ onNewQuest, onClose, skillsCast }: ReportCardProps)
         overflow: 'hidden',
       }}
     >
-      {/* corner sigil */}
+      {/* corner sigil (decorative — must NOT eat clicks on the ✕ beneath it) */}
       <div
         aria-hidden
         style={{
@@ -149,11 +149,13 @@ export function ReportCard({ onNewQuest, onClose, skillsCast }: ReportCardProps)
           background: `conic-gradient(from 0deg, ${accent}, transparent 60%)`,
           opacity: 0.18,
           filter: 'blur(2px)',
+          pointerEvents: 'none',
+          zIndex: 0,
         }}
       />
 
       {/* header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', position: 'relative', zIndex: 1 }}>
         <div>
           <motion.h1
             initial={{ letterSpacing: '0.3em', opacity: 0 }}
