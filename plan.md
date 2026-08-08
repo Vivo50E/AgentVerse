@@ -126,7 +126,9 @@ Battle state machine (Zustand)  ── HP/MP, turn log, actor states
 - [x] Typecheck clean, production build passes (93 KB gz)
 
 ### Remaining before demo
-- [ ] Add real `XAI_API_KEY` to `.env`, run one live quest end-to-end
-- [ ] Confirm exact Grok model id in xAI console (server uses `grok-4.20-non-reasoning`)
+- [x] Add real `XAI_API_KEY` to `.env`, run one live quest end-to-end — VERIFIED against real Grok (tool-call/result, text-delta, step-finish, finish+sources all flow; mapper field/tool names match)
+- [x] Confirm exact Grok model id — key exposes `grok-4.20-{0309-non-reasoning,0309-reasoning,multi-agent-0309},4.3,4.5,build-0.1` + `grok-imagine-image/video`. Server now uses `grok-4.20-multi-agent-0309` (agentic).
 - [ ] Asset/color polish pass; optional Pixi crit particle
 - [ ] Record backup demo video
+- [ ] (nice-to-have) Use `grok-imagine-image` for report-card art / portraits (non-real-time)
+- [ ] (minor) only one `step-finish` per run → rounds barely increment; consider deriving rounds from tool-call count

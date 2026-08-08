@@ -10,8 +10,9 @@ app.use(express.json());
 
 const xai = createXai({ apiKey: process.env.XAI_API_KEY });
 
-// NOTE: confirm the exact model id + tool availability in the xAI console.
-const MODEL = 'grok-4.20-non-reasoning';
+// Verified against this key's /v1/models. multi-agent variant is tuned for
+// agentic tool calling (our whole loop). Alternatives: grok-4.3, grok-4.5.
+const MODEL = 'grok-4.20-multi-agent-0309';
 
 app.post('/api/run', async (req, res) => {
   const task: string = req.body?.task ?? 'Research the latest in AI agents.';
@@ -55,7 +56,8 @@ app.post('/api/run', async (req, res) => {
       }
     }
 
-    const sources = (await result.sources)?.map((s: any) => s.url).filter(Boolean) ?? [];
+    const rawSources = (await result.sources)?.map((s: any) => s.url).filter(Boolean) ?? [];
+    const sources = [...new Set(rawSources)]; // dedupe -> unique "loot"
     send({ type: 'finish', finishReason: 'stop', sources });
   } catch (err) {
     send({ type: 'error', errorMessage: String(err) });
