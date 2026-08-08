@@ -156,7 +156,7 @@ export function JourneyStage() {
   useEffect(() => {
     if (Math.abs(progress - prevProgress.current) > 0.0004) {
       setWalking(true);
-      const t = window.setTimeout(() => setWalking(false), 700);
+      const t = window.setTimeout(() => setWalking(false), 1000);
       prevProgress.current = progress;
       return () => window.clearTimeout(t);
     }
@@ -192,7 +192,9 @@ export function JourneyStage() {
   const heroH = Math.round(vh * 0.46);
   const feet = Math.round(vh * 0.05);
 
-  const spring = { type: 'spring' as const, stiffness: 90, damping: 20 };
+  // Smooth, uniform glide for travel (hero + camera + parallax) so big and
+  // small progress jumps both feel smooth rather than snapping/overshooting.
+  const travel = { type: 'tween' as const, duration: 0.9, ease: 'easeInOut' as const };
 
   return (
     <div
@@ -211,7 +213,7 @@ export function JourneyStage() {
       {/* The scrolling world — everything lives here; camera slides it left. */}
       <motion.div
         animate={{ x: -cameraX }}
-        transition={spring}
+        transition={travel}
         style={{
           position: 'absolute',
           top: 0,
@@ -225,7 +227,7 @@ export function JourneyStage() {
         {background && (
           <motion.div
             animate={{ x: parallax }}
-            transition={spring}
+            transition={travel}
             style={{
               position: 'absolute',
               top: 0,
@@ -251,18 +253,17 @@ export function JourneyStage() {
           }}
         />
 
-        {/* Dark ground / path strip along the bottom. */}
+        {/* Soft grounding shadow along the bottom — no hard line, keeps the
+            real dungeon floor from the background visible. */}
         <div
           style={{
             position: 'absolute',
             left: 0,
             bottom: 0,
             width: WORLD,
-            height: '18%',
+            height: '22%',
             background:
-              'linear-gradient(180deg, rgba(18,15,38,0.35) 0%, #120f26 30%, #0d0b1a 100%)',
-            borderTop: '2px solid #2a2450',
-            boxShadow: 'inset 0 6px 18px rgba(0,0,0,0.6)',
+              'linear-gradient(180deg, rgba(13,11,26,0) 0%, rgba(13,11,26,0.25) 55%, rgba(13,11,26,0.6) 100%)',
             pointerEvents: 'none',
           }}
         />
@@ -281,17 +282,16 @@ export function JourneyStage() {
           const foeH = Math.round(vh * 0.42 * KIND_SCALE[wp.kind]);
           const x = foeWorldX(wp.at);
 
-          // HP feel for the active foe.
+          // HP feel: every foe (boss included) shows FULL HP until the hero is
+          // close, then drains over a short "engagement zone" right before it
+          // falls — so foes never pop in already half-dead.
           const showHp = i === activeIndex && !cleared;
-          let hpPct = 100;
-          if (isBoss) {
-            hpPct = boss.maxHp > 0 ? (boss.hp / boss.maxHp) * 100 : 0;
-          } else {
-            const prevAt = i === 0 ? 0 : WAYPOINTS[i - 1].at;
-            const span = wp.at - prevAt;
-            const frac = span > 0 ? clamp((progress - prevAt) / span, 0, 1) : 1;
-            hpPct = (1 - frac) * 100;
-          }
+          const prevAt = i === 0 ? 0 : WAYPOINTS[i - 1].at;
+          const span = wp.at - prevAt;
+          const engage = Math.min(span, 0.1);
+          const startDrain = wp.at - engage;
+          const frac = engage > 0 ? clamp((progress - startDrain) / engage, 0, 1) : 1;
+          const hpPct = (1 - frac) * 100;
 
           const foeCharacter: CharacterSprites = {
             name: wp.label,
@@ -396,7 +396,7 @@ export function JourneyStage() {
         {heroSprites && (
           <motion.div
             animate={{ x: heroX }}
-            transition={spring}
+            transition={travel}
             style={{
               position: 'absolute',
               left: 0,

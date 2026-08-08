@@ -63,6 +63,13 @@ export const useBattle = create<Store>((set) => ({
             `${action.crit ? '💥 CRIT! ' : ''}${action.note ?? 'hit'} — ${action.damage} dmg`,
             action.crit ? 'crit' : 'good',
           );
+          // Boss slain by this blow → declare victory now, instead of waiting for
+          // the trailing narration stream + finish event (which felt laggy).
+          if (boss.hp === 0 && phase === 'fighting') {
+            phase = 'victory';
+            reportSummary = 'The problem is solved. Boss down!';
+            push('🏆 VICTORY — boss defeated!', 'crit');
+          }
           break;
         case 'agent_hurt':
           hero.hp = Math.max(0, hero.hp - action.damage);
@@ -72,11 +79,15 @@ export const useBattle = create<Store>((set) => ({
           round = s.round + 1;
           break;
         case 'victory':
-          phase = 'victory';
+          // Idempotent: the boss may already be down (see 'hit'). Always fold in
+          // the citations ("loot") from finish, but don't double-log victory.
           boss.hp = 0;
-          reportSummary = action.summary;
           if (action.sources) sources = action.sources;
-          push('🏆 VICTORY — boss defeated!', 'crit');
+          if (phase !== 'victory') {
+            phase = 'victory';
+            reportSummary = action.summary;
+            push('🏆 VICTORY — boss defeated!', 'crit');
+          }
           break;
         case 'defeat':
           phase = 'defeat';
