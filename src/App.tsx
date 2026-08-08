@@ -10,7 +10,7 @@ import { SettingsPanel } from './components/SettingsPanel';
 import { DesignStudio } from './design';
 import { EquipmentPanel } from './loadout';
 import { HeroInventory } from './heroes';
-import { useBattleVoice } from './voice';
+import { useBattleVoice, primeSpeech, speak } from './voice';
 
 const PIXEL = "'Press Start 2P', ui-monospace, monospace";
 
@@ -66,12 +66,17 @@ export function App() {
   const changeVoice = (v: boolean) => {
     setVoiceOn(v);
     try { localStorage.setItem('agentverse:voice', v ? 'on' : 'off'); } catch { /* ignore */ }
+    if (v) speak('Voice narration on'); // spoken inside the toggle gesture → confirms + unlocks the engine
   };
 
   const toneColor = { info: '#9d97c9', good: '#57d9a3', bad: '#ff6b81', crit: '#ffd166' } as const;
   const fighting = phase === 'fighting';
   const showReport = (phase === 'victory' || phase === 'defeat') && !reportDismissed;
-  const startQuest = () => { setReportDismissed(false); runAgent(task); };
+  const startQuest = () => {
+    setReportDismissed(false);
+    if (voiceOn) primeSpeech(); // unlock speech within this click so async battle lines can play
+    runAgent(task);
+  };
 
   return (
     <div style={{ color: '#e6e2ff', padding: '28px 24px 48px', minHeight: '100vh', maxWidth: 900, margin: '0 auto', position: 'relative' }}>

@@ -120,6 +120,25 @@ export async function speak(text: string): Promise<void> {
   await speakFallback(text);
 }
 
+/**
+ * Unlock/warm the Web Speech engine from within a user gesture (click). Browsers
+ * only allow speechSynthesis after a user activation, and battle lines fire
+ * seconds later via async callbacks — past the activation window — so without
+ * this priming they'd be silently dropped. Call from click handlers.
+ */
+export function primeSpeech(): void {
+  if (!hasSpeechSynthesis()) return;
+  try {
+    window.speechSynthesis.getVoices(); // kick voice loading
+    window.speechSynthesis.resume(); // in case the engine is paused
+    const u = new SpeechSynthesisUtterance(' ');
+    u.volume = 0; // silent — just to unlock the engine within the gesture
+    window.speechSynthesis.speak(u);
+  } catch {
+    /* ignore */
+  }
+}
+
 /** Stop any current speech (both backend audio and Web Speech). */
 export function cancelSpeech(): void {
   if (currentAudio) {
