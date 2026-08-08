@@ -4,9 +4,11 @@
 import { useCallback, useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import type { CharacterSprites, FxArchetype } from '../battle/sprites';
+import { FX_ARCHETYPES } from '../battle/sprites';
 import { useCharacters } from '../battle/characters';
 import { useHeroRoster } from '../heroes';
 import { finalizeDesign, requestDesigns, type Candidate } from './designApi';
+import { FxPreview, ARCHETYPE_LABEL } from '../components/battle/FxPreview';
 
 /** Client fallback: infer combat VFX archetype from the concept text. */
 function classifyFxClient(text: string): FxArchetype {
@@ -76,6 +78,7 @@ export function DesignStudio({ onDone, target = 'hero' }: DesignStudioProps) {
 
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [fxOverride, setFxOverride] = useState<FxArchetype | null>(null); // null = auto
 
   const [loading, setLoading] = useState(false); // summoning / refining candidates
   const [forging, setForging] = useState(false); // finalizing chosen sprite
@@ -89,6 +92,11 @@ export function DesignStudio({ onDone, target = 'hero' }: DesignStudioProps) {
     () => candidates.find((c) => c.id === selectedId) ?? null,
     [candidates, selectedId],
   );
+
+  // Effective combat archetype for the selected candidate: user override wins,
+  // else the design agent's choice, else a keyword guess from the concept.
+  const effectiveFx: FxArchetype =
+    fxOverride ?? selected?.fx ?? classifyFxClient(concept);
 
   const summon = useCallback(
     async (fb?: string) => {
@@ -114,9 +122,9 @@ export function DesignStudio({ onDone, target = 'hero' }: DesignStudioProps) {
     try {
       const finalName = name.trim() || selected.label || concept.trim() || `My ${kind}`;
       const sprites: CharacterSprites = await finalizeDesign(selected.url, finalName);
-      // Attach the combat VFX archetype generated with the character (agent's
-      // choice, or a keyword fallback) so effects match this hero, not the mage.
-      sprites.fx = { archetype: selected.fx ?? classifyFxClient(concept) };
+      // Attach the combat VFX archetype (user override > agent's choice >
+      // keyword fallback) so effects match this hero, not the mage.
+      sprites.fx = { archetype: effectiveFx };
       if (target === 'boss') useCharacters.getState().setBoss(sprites);
       else {
         useCharacters.getState().setHero(sprites);
@@ -243,7 +251,7 @@ export function DesignStudio({ onDone, target = 'hero' }: DesignStudioProps) {
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         transition={{ delay: i * 0.06, type: 'spring', stiffness: 200, damping: 20 }}
                         whileHover={{ y: -4 }}
-                        onClick={() => setSelectedId(cand.id)}
+                        onClick={() => { setSelectedId(cand.id); setFxOverride(null); }}
                         style={{
                           textAlign: 'left',
                           cursor: 'pointer',
@@ -292,6 +300,44 @@ export function DesignStudio({ onDone, target = 'hero' }: DesignStudioProps) {
                       ↻ Refine
                     </button>
                   </div>
+
+                  {/* Combat style — preview the attack VFX and adjust it. This is
+                      generated with the character (agent's pick) but editable here. */}
+                  {selected && (
+                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-start', margin: '4px 0 18px', paddingTop: 16, borderTop: `1px solid ${BORDER}` }}>
+                      <div>
+                        <div style={{ color: MUTED, fontSize: 13, marginBottom: 8 }}>Combat style — preview</div>
+                        <FxPreview archetype={effectiveFx} />
+                      </div>
+                      <div style={{ flex: '1 1 220px' }}>
+                        <div style={{ color: MUTED, fontSize: 13, marginBottom: 8 }}>
+                          {fxOverride ? 'Chosen style' : 'Auto-detected — tap to change'}
+                        </div>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                          {FX_ARCHETYPES.map((a) => {
+                            const on = effectiveFx === a;
+                            return (
+                              <button
+                                key={a}
+                                onClick={() => setFxOverride(a)}
+                                style={{
+                                  ...btnBase,
+                                  padding: '7px 11px',
+                                  fontSize: 12,
+                                  background: on ? ACCENT : 'transparent',
+                                  color: on ? '#fff' : MUTED,
+                                  border: `1px solid ${on ? ACCENT : BORDER}`,
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                {ARCHETYPE_LABEL[a].split(' — ')[0]}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
                     <input

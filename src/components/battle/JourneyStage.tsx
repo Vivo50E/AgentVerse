@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion, useAnimationControls } from 'framer-motion';
 import { useBattle } from '../../battle/store';
 import { useCharacters } from '../../battle/characters';
 import { poseForAction } from '../../battle/sprites';
@@ -193,6 +193,14 @@ export function JourneyStage() {
   const foeCenterX = activeFoeX;
   const foeCenterY = vh - (groundY + activeFoeH / 2);
 
+  // Melee archetypes (e.g. a knight) have no projectile, so on a hit the hero
+  // must DASH in to the foe, strike, and return — otherwise it looks like it's
+  // swinging at empty air across the engagement gap. Ranged/magic stay put and
+  // let their bolt/arrow cross the gap. Driven by the design-time fx archetype.
+  const isMelee = heroSprites?.fx?.archetype === 'slash';
+  const lungeRef = useRef(0);
+  lungeRef.current = Math.max(0, foeCenterX - heroX - activeFoeW * 0.45 - heroW * 0.2);
+
   // Smooth, uniform glide for travel (hero + camera + parallax) so big and
   // small progress jumps both feel smooth rather than snapping/overshooting.
   const travel = { type: 'tween' as const, duration: 0.9, ease: 'easeInOut' as const };
@@ -229,13 +237,23 @@ export function JourneyStage() {
   const [hit, setHit] = useState<number | null>(null);
   const hitId = useRef(0);
   const [hitTrigger, setHitTrigger] = useState(0);
+  const dashControls = useAnimationControls(); // melee lunge (dash-in strike)
   useEffect(() => {
     if (lastAction?.type !== 'hit') return undefined;
     const id = ++hitId.current;
     setHit(id);
     setHitTrigger((n) => n + 1);
+    if (isMelee) {
+      // Dash to the foe, hold for the slash, then return.
+      void dashControls.start({
+        x: [0, lungeRef.current, lungeRef.current, 0],
+        transition: { duration: 0.6, times: [0, 0.28, 0.5, 1], ease: 'easeOut' },
+      });
+    }
     const t = window.setTimeout(() => setHit((cur) => (cur === id ? null : cur)), 500);
     return () => window.clearTimeout(t);
+    // isMelee/lungeRef are read live; only re-run when the action changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastAction]);
 
   return (
@@ -459,23 +477,27 @@ export function JourneyStage() {
               }}
             >
               <MiniHpBar pct={heroActor.maxHp > 0 ? (heroActor.hp / heroActor.maxHp) * 100 : 0} color="#57d9a3" label={heroActor.name} />
-              {/* Procedural walk cycle: step-bob + forward lean + squash while
-                  travelling; settles to a still stance on arrival. Pivots at the
-                  feet so the lean/squash read as a stride, not a spin. */}
-              <motion.div
-                animate={
-                  walking
-                    ? { y: [0, -10, 0, -10, 0], rotate: [1, 4, 1, 4, 1], scaleY: [1, 0.96, 1, 0.96, 1] }
-                    : { y: 0, rotate: 0, scaleY: 1 }
-                }
-                transition={
-                  walking
-                    ? { duration: 0.46, repeat: Infinity, ease: 'easeInOut' }
-                    : { duration: 0.3, ease: 'easeOut' }
-                }
-                style={{ transformOrigin: 'bottom center', willChange: 'transform' }}
-              >
-                <Sprite sprites={heroSprites} pose={heroPose} height={heroH} />
+              {/* Melee lunge layer: dashes toward the foe on a hit (no-op for
+                  ranged/magic heroes, whose projectiles cross the gap instead). */}
+              <motion.div animate={dashControls} initial={{ x: 0 }} style={{ willChange: 'transform' }}>
+                {/* Procedural walk cycle: step-bob + forward lean + squash while
+                    travelling; settles to a still stance on arrival. Pivots at the
+                    feet so the lean/squash read as a stride, not a spin. */}
+                <motion.div
+                  animate={
+                    walking
+                      ? { y: [0, -10, 0, -10, 0], rotate: [1, 4, 1, 4, 1], scaleY: [1, 0.96, 1, 0.96, 1] }
+                      : { y: 0, rotate: 0, scaleY: 1 }
+                  }
+                  transition={
+                    walking
+                      ? { duration: 0.46, repeat: Infinity, ease: 'easeInOut' }
+                      : { duration: 0.3, ease: 'easeOut' }
+                  }
+                  style={{ transformOrigin: 'bottom center', willChange: 'transform' }}
+                >
+                  <Sprite sprites={heroSprites} pose={heroPose} height={heroH} />
+                </motion.div>
               </motion.div>
             </div>
           </motion.div>
