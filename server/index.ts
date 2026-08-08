@@ -18,6 +18,10 @@ const MODEL = 'grok-4.20-multi-agent-0309';
 
 app.post('/api/run', async (req, res) => {
   const task: string = req.body?.task ?? 'Research the latest in AI agents.';
+  // The equipped loadout decides which tools the agent may use. Default = all.
+  const requested: string[] = Array.isArray(req.body?.tools)
+    ? req.body.tools
+    : ['web_search', 'x_search', 'code_execution'];
 
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -25,16 +29,21 @@ app.post('/api/run', async (req, res) => {
   const send = (obj: unknown) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
 
   try {
+    const allTools: Record<string, any> = {
+      web_search: xai.tools.webSearch(),
+      x_search: xai.tools.xSearch(), // signature "Intel Summon ⚡" skill
+      code_execution: xai.tools.codeExecution(),
+    };
+    const tools = Object.fromEntries(
+      Object.entries(allTools).filter(([name]) => requested.includes(name)),
+    );
+
     const result = streamText({
       model: xai.responses(MODEL),
       prompt:
         `You are an adventurer solving a quest for the user. Think step by step, ` +
-        `use your tools (web/X search, code) as needed. Quest: ${task}`,
-      tools: {
-        web_search: xai.tools.webSearch(),
-        x_search: xai.tools.xSearch(), // signature "Intel Summon ⚡" skill
-        code_execution: xai.tools.codeExecution(),
-      },
+        `use your tools (${Object.keys(tools).join(', ') || 'none'}) as needed. Quest: ${task}`,
+      tools,
     });
 
     for await (const ev of result.fullStream) {

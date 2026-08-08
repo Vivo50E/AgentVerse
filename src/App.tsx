@@ -3,14 +3,17 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useBattle } from './battle/store';
 import { runAgent } from './agent/run';
 import { BattleStage } from './components/battle';
+import { QuestTrack } from './components/QuestTrack';
 import { ReportCard } from './components/ReportCard';
 import { DesignStudio } from './design';
+import { CharacterSheet } from './loadout';
 import { useBattleVoice } from './voice';
 
 export function App() {
   const [task, setTask] = useState('Research the biggest AI agent news this week');
   const [voiceOn, setVoiceOn] = useState(false);
   const [designing, setDesigning] = useState<false | 'hero' | 'boss'>(false);
+  const [loadout, setLoadout] = useState(false);
   const { phase, round, log } = useBattle();
 
   useBattleVoice(voiceOn); // narration (needs the toggle as the user gesture)
@@ -40,6 +43,7 @@ export function App() {
       <div style={{ display: 'flex', gap: 10, marginBottom: 12, flexWrap: 'wrap' }}>
         <button onClick={() => setDesigning('hero')} style={btn('#2a2450')}>✦ Design your hero</button>
         <button onClick={() => setDesigning('boss')} style={btn('#2a2450')}>👹 Design the boss</button>
+        <button onClick={() => setLoadout(true)} style={btn('#2a2450')}>⚙ Loadout</button>
       </div>
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 20 }}>
@@ -50,9 +54,12 @@ export function App() {
         </button>
       </div>
 
-      {/* Side-view JRPG battle stage — self-contained (sprites, HP bars, damage, casts). */}
+      {/* Quest progress track + side-view JRPG battle stage. */}
       <div style={{ marginBottom: 20 }}>
-        <BattleStage />
+        <QuestTrack />
+        <div style={{ marginTop: 12 }}>
+          <BattleStage />
+        </div>
       </div>
 
       <div style={{ height: 220, overflowY: 'auto', background: '#120f26', border: '1px solid #2a2450', borderRadius: 10, padding: 14 }}>
@@ -79,6 +86,11 @@ export function App() {
 
       {/* Human-in-the-loop character designer */}
       {designing && <DesignStudio target={designing} onDone={() => setDesigning(false)} />}
+
+      {/* Agent loadout / hexagon ability sheet */}
+      <AnimatePresence>
+        {loadout && <CharacterSheet key="loadout" onClose={() => setLoadout(false)} />}
+      </AnimatePresence>
     </div>
   );
 }

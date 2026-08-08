@@ -1,16 +1,20 @@
 // Frontend: kick off an agent run and pipe SSE events into the battle store.
 import { mapEvent } from '../battle/eventMapper';
 import { useBattle } from '../battle/store';
+import { useLoadout } from '../loadout';
 import type { StreamEvent } from '../battle/types';
 
 export async function runAgent(task: string) {
   const { start, apply } = useBattle.getState();
   start();
 
+  // The equipped loadout decides which real tools the agent may wield.
+  const tools = useLoadout.getState().getEnabledTools();
+
   const res = await fetch('/api/run', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ task }),
+    body: JSON.stringify({ task, tools }),
   });
 
   if (!res.body) {
