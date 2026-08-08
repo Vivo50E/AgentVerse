@@ -480,13 +480,15 @@ export function JourneyStage() {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: 4,
+                gap: 0,
               }}
             >
               <MiniHpBar pct={heroActor.maxHp > 0 ? (heroActor.hp / heroActor.maxHp) * 100 : 0} color="#57d9a3" label={heroActor.name} />
               {/* Melee lunge layer: dashes toward the foe on a hit (no-op for
-                  ranged/magic heroes, whose projectiles cross the gap instead). */}
-              <motion.div animate={dashControls} initial={{ x: 0 }} style={{ willChange: 'transform' }}>
+                  ranged/magic heroes, whose projectiles cross the gap instead).
+                  Negative top margin absorbs the sprite frame's transparent
+                  headroom so the HP bar sits just above the character. */}
+              <motion.div animate={dashControls} initial={{ x: 0 }} style={{ willChange: 'transform', marginTop: -Math.round(heroH * 0.14) }}>
                 {/* Procedural walk cycle: step-bob + forward lean + squash while
                     travelling; settles to a still stance on arrival. Pivots at the
                     feet so the lean/squash read as a stride, not a spin. */}
@@ -506,10 +508,11 @@ export function JourneyStage() {
                   <Sprite sprites={heroSprites} pose={heroPose} height={heroH} />
                 </motion.div>
               </motion.div>
-              {/* Battle Power badge beneath the hero. */}
+              {/* Battle Power badge beneath the hero. Negative top margin absorbs
+                  the sprite frame's transparent footer so it sits near the feet. */}
               <div
                 style={{
-                  marginTop: 2,
+                  marginTop: -Math.round(heroH * 0.08),
                   fontFamily: 'ui-monospace, monospace',
                   fontSize: 11,
                   fontWeight: 800,
