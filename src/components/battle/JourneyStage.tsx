@@ -18,6 +18,7 @@ import { SkillCast } from './SkillCast';
 import { SpellFx } from './SpellFx';
 import { useLoadout } from '../../loadout';
 import { useProgression, combineStats, powerOf } from '../../progression';
+import { measureBounds, boundsOf } from '../../battle/spriteBounds';
 
 const WORLD = 2600;
 
@@ -129,6 +130,23 @@ export function JourneyStage() {
       alive = false;
     };
   }, []);
+
+  // Measure each sprite's transparent padding so HP bar / name / power hug the
+  // real character (content height varies: a slime fills the bottom, a golem the
+  // whole frame). `boundsTick` just forces a re-render as measurements land.
+  const [, setBoundsTick] = useState(0);
+  useEffect(() => {
+    let alive = true;
+    const srcs = [
+      heroSprites?.poses.idle,
+      bossSprites?.poses.idle,
+      ...Object.values(foes).map((f) => f.poses.idle),
+    ].filter((s): s is string => !!s);
+    void Promise.all(srcs.map((src) => measureBounds(src))).then(() => {
+      if (alive) setBoundsTick((n) => n + 1);
+    });
+    return () => { alive = false; };
+  }, [heroSprites, bossSprites, foes]);
 
   // Measure the viewport so the camera + sprite sizes stay responsive.
   const viewportRef = useRef<HTMLDivElement>(null);
@@ -379,7 +397,7 @@ export function JourneyStage() {
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: 4,
+                gap: 0,
                 zIndex: isBig ? 4 : 3,
                 pointerEvents: 'none',
               }}
@@ -420,7 +438,9 @@ export function JourneyStage() {
                   duration: cleared ? (isBig ? 1.2 : 0.6) : 0.3,
                   ease: 'easeIn',
                 }}
-                style={{ willChange: 'transform, opacity' }}
+                // Pull up under the label/HP bar to absorb the sprite frame's
+                // measured transparent headroom (varies: slime vs golem).
+                style={{ willChange: 'transform, opacity', marginTop: -Math.round(boundsOf(sprites.poses.idle).top * foeH) - 2 }}
               >
                 <Sprite
                   sprites={foeCharacter}
@@ -488,7 +508,7 @@ export function JourneyStage() {
                   ranged/magic heroes, whose projectiles cross the gap instead).
                   Negative top margin absorbs the sprite frame's transparent
                   headroom so the HP bar sits just above the character. */}
-              <motion.div animate={dashControls} initial={{ x: 0 }} style={{ willChange: 'transform', marginTop: -Math.round(heroH * 0.14) }}>
+              <motion.div animate={dashControls} initial={{ x: 0 }} style={{ willChange: 'transform', marginTop: -Math.round(boundsOf(heroSprites.poses.idle).top * heroH) - 2 }}>
                 {/* Procedural walk cycle: step-bob + forward lean + squash while
                     travelling; settles to a still stance on arrival. Pivots at the
                     feet so the lean/squash read as a stride, not a spin. */}
@@ -512,7 +532,7 @@ export function JourneyStage() {
                   the sprite frame's transparent footer so it sits near the feet. */}
               <div
                 style={{
-                  marginTop: -Math.round(heroH * 0.08),
+                  marginTop: -Math.round(boundsOf(heroSprites.poses.idle).bottom * heroH) - 2,
                   fontFamily: 'ui-monospace, monospace',
                   fontSize: 11,
                   fontWeight: 800,
