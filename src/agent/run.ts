@@ -17,6 +17,24 @@ interface RunOptions {
   hitl?: boolean;
 }
 
+/** The equipped loadout's real, non-cosmetic effects on the backend call —
+ * which tools are available, how hard the model reasons, and how much
+ * chain-of-thought/self-check instruction rides along in its prompt. */
+interface AbilityProfile {
+  tools: string[];
+  reasoningEffort: string;
+  promptTier: string;
+}
+
+function abilityProfile(): AbilityProfile {
+  const loadout = useLoadout.getState();
+  return {
+    tools: loadout.getEnabledTools(),
+    reasoningEffort: loadout.getReasoningEffort(),
+    promptTier: loadout.getPromptTier(),
+  };
+}
+
 const FALLBACK_TACTICS = [
   'Push forward with the same approach',
   'Try a different angle',
@@ -53,12 +71,12 @@ async function readSse(res: Response, onEvent: (ev: StreamEvent) => void): Promi
 }
 
 /** Classic path: one long-lived stream for the whole quest, no pausing. */
-async function runClassic(task: string, tools: string[]): Promise<void> {
+async function runClassic(task: string, ability: AbilityProfile): Promise<void> {
   const { apply } = useBattle.getState();
   const res = await fetch('/api/run', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ task, tools }),
+    body: JSON.stringify({ task, ...ability }),
   });
   if (!res.body) {
     apply({ type: 'defeat', reason: 'no response stream' });
@@ -90,7 +108,7 @@ async function askPlayer(task: string): Promise<string | null> {
 
 /** HITL path: advances the quest one turn per HTTP call, pausing for player
  * input whenever a turn made a tool call and the fight is still ongoing. */
-async function runHitl(task: string, tools: string[]): Promise<void> {
+async function runHitl(task: string, ability: AbilityProfile): Promise<void> {
   const { apply } = useBattle.getState();
 
   // Runs one turn's SSE stream, returns the sessionId to continue with if the
@@ -116,7 +134,7 @@ async function runHitl(task: string, tools: string[]): Promise<void> {
     await fetch('/api/run/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task, tools }),
+      body: JSON.stringify({ task, ...ability }),
     }),
   );
 
@@ -155,12 +173,13 @@ export async function runAgent(task: string, opts: RunOptions = {}) {
     else qs.resetLabels();
   });
 
-  // The equipped loadout decides which real tools the agent may wield.
-  const tools = useLoadout.getState().getEnabledTools();
+  // The equipped loadout decides which real tools the agent may wield, how
+  // hard it reasons, and how much chain-of-thought it's instructed to do.
+  const ability = abilityProfile();
 
   try {
-    if (opts.hitl) await runHitl(task, tools);
-    else await runClassic(task, tools);
+    if (opts.hitl) await runHitl(task, ability);
+    else await runClassic(task, ability);
   } catch (err) {
     apply({ type: 'defeat', reason: String(err) });
   } finally {

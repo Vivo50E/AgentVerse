@@ -3,7 +3,7 @@
 //   useLoadout.getState().getEnabledTools()
 import { create } from 'zustand';
 import { CATALOG } from './catalog';
-import type { Stat, ToolId } from './types';
+import type { PromptTier, ReasoningEffort, Stat, ToolId } from './types';
 import { STATS } from './types';
 
 const BASE_STAT = 15;
@@ -51,6 +51,26 @@ function computeEnabledTools(equipped: Record<string, boolean>): ToolId[] {
   return Array.from(seen);
 }
 
+// Reasoning gear (Grok-4.3 Crown, Multi-Agent Diadem, Logic Circlet, ...) maps
+// to xAI's real reasoningEffort provider option — thresholds tuned so the
+// default loadout (base 15 + Code Forge Hammer +4 + Expert Sigil +3 + Crown
+// +34 = 56) lands on 'medium'.
+function reasoningEffortForStat(reasoning: number): ReasoningEffort {
+  if (reasoning >= 65) return 'high';
+  if (reasoning >= 45) return 'medium';
+  if (reasoning >= 25) return 'low';
+  return 'none';
+}
+
+// Prompt gear (Novice Scroll, Expert Sigil, Chain-of-Thought Rune, ...) scales
+// how much chain-of-thought/self-check instruction rides along in the agent's
+// system prompt — see PROMPT_TIER_TEXT in server/index.ts.
+function promptTierForStat(prompt: number): PromptTier {
+  if (prompt >= 55) return 'selfVerify';
+  if (prompt >= 25) return 'stepByStep';
+  return 'basic';
+}
+
 interface LoadoutStore {
   equipped: Record<string, boolean>;
   toggle: (id: string) => void;
@@ -59,6 +79,8 @@ interface LoadoutStore {
   stats: () => Record<Stat, number>;
   powerLevel: () => number;
   getEnabledTools: () => string[];
+  getReasoningEffort: () => ReasoningEffort;
+  getPromptTier: () => PromptTier;
 }
 
 export const useLoadout = create<LoadoutStore>((set, get) => ({
@@ -74,4 +96,6 @@ export const useLoadout = create<LoadoutStore>((set, get) => ({
     return STATS.reduce((sum, s) => sum + st[s], 0);
   },
   getEnabledTools: () => computeEnabledTools(get().equipped),
+  getReasoningEffort: () => reasoningEffortForStat(computeStats(get().equipped).reasoning),
+  getPromptTier: () => promptTierForStat(computeStats(get().equipped).prompt),
 }));

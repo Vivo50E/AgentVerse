@@ -26,6 +26,23 @@ function buildTools(requested: string[]): Record<string, any> {
   return Object.fromEntries(Object.entries(allTools).filter(([name]) => requested.includes(name)));
 }
 
+// Two of the loadout's six ability stats (src/loadout/store.ts) have real,
+// non-cosmetic effects on the model call — Reasoning and Prompt gear actually
+// change how the agent thinks, not just its displayed stat sheet.
+const REASONING_EFFORTS = new Set(['none', 'low', 'medium', 'high']);
+function parseReasoningEffort(value: unknown): 'none' | 'low' | 'medium' | 'high' {
+  return REASONING_EFFORTS.has(value as string) ? (value as any) : 'none';
+}
+
+const PROMPT_TIER_TEXT: Record<string, string> = {
+  basic: '',
+  stepByStep: ' Think step by step before acting.',
+  selfVerify: ' Think step by step, and before giving your final answer, briefly double-check it for correctness and completeness.',
+};
+function parsePromptTier(value: unknown): keyof typeof PROMPT_TIER_TEXT {
+  return value === 'stepByStep' || value === 'selfVerify' ? value : 'basic';
+}
+
 type Send = (obj: unknown) => void;
 
 function sseHeaders(res: express.Response) {
@@ -40,6 +57,8 @@ app.post('/api/run', async (req, res) => {
   const requested: string[] = Array.isArray(req.body?.tools)
     ? req.body.tools
     : ['web_search', 'x_search', 'code_execution'];
+  const reasoningEffort = parseReasoningEffort(req.body?.reasoningEffort);
+  const promptTier = parsePromptTier(req.body?.promptTier);
 
   sseHeaders(res);
   const send: Send = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
@@ -50,9 +69,10 @@ app.post('/api/run', async (req, res) => {
     const result = streamText({
       model: xai.responses(MODEL),
       prompt:
-        `You are an adventurer solving a quest for the user. Think step by step, ` +
-        `use your tools (${Object.keys(tools).join(', ') || 'none'}) as needed. Quest: ${task}`,
+        `You are an adventurer solving a quest for the user. ` +
+        `Use your tools (${Object.keys(tools).join(', ') || 'none'}) as needed.${PROMPT_TIER_TEXT[promptTier]} Quest: ${task}`,
       tools,
+      providerOptions: { xai: { reasoningEffort } },
     });
 
     for await (const ev of result.fullStream) {
@@ -99,6 +119,8 @@ app.post('/api/run', async (req, res) => {
 interface RunSession {
   messages: any[]; // ModelMessage[] — accumulated conversation, incl. tool calls/results
   tools: Record<string, any>;
+  reasoningEffort: 'none' | 'low' | 'medium' | 'high';
+  promptTier: keyof typeof PROMPT_TIER_TEXT;
   touchedAt: number;
 }
 const sessions = new Map<string, RunSession>();
@@ -108,7 +130,7 @@ setInterval(() => {
   for (const [id, s] of sessions) if (s.touchedAt < cutoff) sessions.delete(id);
 }, 5 * 60 * 1000).unref();
 
-const HITL_SYSTEM_PROMPT =
+const HITL_SYSTEM_PROMPT_BASE =
   'You are an adventurer solving a quest for the user, one step at a time. Make one ' +
   'meaningful move per turn — at most one tool call — then briefly note your plan and ' +
   'stop; you will be shown the result and may continue on the next turn. Once the quest ' +
@@ -123,10 +145,11 @@ async function runStep(
   try {
     const result = streamText({
       model: xai.responses(MODEL),
-      system: HITL_SYSTEM_PROMPT,
+      system: HITL_SYSTEM_PROMPT_BASE + PROMPT_TIER_TEXT[session.promptTier],
       messages: session.messages,
       tools: session.tools,
       stopWhen: stepCountIs(1),
+      providerOptions: { xai: { reasoningEffort: session.reasoningEffort } },
     });
 
     for await (const ev of result.fullStream) {
@@ -189,6 +212,8 @@ app.post('/api/run/start', async (req, res) => {
   const session: RunSession = {
     messages: [{ role: 'user', content: `Quest: ${task}` }],
     tools: buildTools(requested),
+    reasoningEffort: parseReasoningEffort(req.body?.reasoningEffort),
+    promptTier: parsePromptTier(req.body?.promptTier),
     touchedAt: Date.now(),
   };
   sessions.set(sessionId, session);

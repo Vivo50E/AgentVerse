@@ -140,6 +140,17 @@ export function IconTrophy(p: IconProps) {
   );
 }
 
+/** Small floating window — Mini View. */
+export function IconMiniView(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <rect x="3" y="4" width="18" height="14" />
+      <path d="M3 8 h18" />
+      <rect x="12" y="11" width="7" height="5" fill="currentColor" stroke="none" />
+    </Svg>
+  );
+}
+
 /** Pinned corkboard card — Quest Board / task hub. */
 export function IconBoard(p: IconProps) {
   return (

@@ -10,6 +10,7 @@ import { AnswerView } from './components/AnswerView';
 import { AgentFlowView } from './components/AgentFlowView';
 import { SettingsPanel } from './components/SettingsPanel';
 import { ComingSoon } from './components/ComingSoon';
+import { MiniWidget } from './components/MiniWidget';
 import { PromoQR } from './components/PromoQR';
 import { DesignStudio } from './design';
 import { requestTaskBoss } from './design/designApi';
@@ -18,7 +19,7 @@ import { HeroInventory } from './heroes';
 import { useBattleSfx, resumeAudio } from './sfx';
 import {
   IconWand, IconSkull, IconRoster, IconLoadout, IconSettings, IconPlay, IconSwords, IconBook,
-  IconFriends, IconTrophy, IconBoard,
+  IconFriends, IconTrophy, IconBoard, IconMiniView,
 } from './components/icons';
 
 const PIXEL = "'Press Start 2P', ui-monospace, monospace";
@@ -86,6 +87,11 @@ const readHitlPref = (): boolean => {
   try { return localStorage.getItem('agentverse:hitl') === 'on'; } catch { return false; }
 };
 
+// Draggable floating HP/round widget — off by default, view preference only.
+const readMiniPref = (): boolean => {
+  try { return localStorage.getItem('agentverse:mini') === 'on'; } catch { return false; }
+};
+
 export function App() {
   const [task, setTask] = useState('Research the biggest AI agent news this week');
   const [sfxOn, setSfxOn] = useState(readSfxPref); // ON by default
@@ -102,6 +108,7 @@ export function App() {
   const [selectedDemo, setSelectedDemo] = useState<number | null>(null);
   const [showDemoPanel, setShowDemoPanel] = useState(false);
   const [comingSoon, setComingSoon] = useState<{ title: string; desc: string } | null>(null);
+  const [miniMode, setMiniModeState] = useState(readMiniPref);
   const taskInputRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-grow the quest textarea with its content instead of scrolling internally.
@@ -186,6 +193,11 @@ export function App() {
     try { localStorage.setItem('agentverse:hitl', v ? 'on' : 'off'); } catch { /* ignore */ }
   };
 
+  const changeMini = (v: boolean) => {
+    setMiniModeState(v);
+    try { localStorage.setItem('agentverse:mini', v ? 'on' : 'off'); } catch { /* ignore */ }
+  };
+
   const toneColor = { info: '#9d97c9', good: '#57d9a3', bad: '#ff6b81', crit: '#ffd166' } as const;
   const fighting = phase === 'fighting';
   const summoningBoss = bossPhase !== null;
@@ -254,6 +266,9 @@ export function App() {
         </GameButton>
         <GameButton onClick={() => setComingSoon({ title: '📌 QUEST BOARD', desc: 'A home base listing every pending and completed quest.' })}>
           <IconBoard size={15} /> Quest Board
+        </GameButton>
+        <GameButton variant={miniMode ? 'gold' : 'ghost'} onClick={() => changeMini(!miniMode)}>
+          <IconMiniView size={15} /> {miniMode ? 'Hide Mini View' : 'Mini View'}
         </GameButton>
         <GameButton onClick={() => setShowSettings(true)}><IconSettings size={15} /> Settings</GameButton>
       </div>
@@ -455,6 +470,10 @@ export function App() {
             onClose={() => setComingSoon(null)}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {miniMode && <MiniWidget key="mini-widget" onClose={() => changeMini(false)} />}
       </AnimatePresence>
     </div>
   );
