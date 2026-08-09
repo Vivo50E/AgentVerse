@@ -11,6 +11,8 @@ import { AgentFlowView } from './components/AgentFlowView';
 import { SettingsPanel } from './components/SettingsPanel';
 import { ComingSoon } from './components/ComingSoon';
 import { MiniWidget } from './components/MiniWidget';
+import { QuestBoard } from './components/QuestBoard';
+import { DEMO_QUESTS, type DemoQuest } from './quests/demoQuests';
 import { PromoQR } from './components/PromoQR';
 import { DesignStudio } from './design';
 import { requestTaskBoss } from './design/designApi';
@@ -18,7 +20,7 @@ import { EquipmentPanel } from './loadout';
 import { HeroInventory } from './heroes';
 import { useBattleSfx, resumeAudio } from './sfx';
 import {
-  IconWand, IconSkull, IconRoster, IconLoadout, IconSettings, IconPlay, IconSwords, IconBook,
+  IconWand, IconSkull, IconRoster, IconLoadout, IconSettings, IconPlay, IconSwords,
   IconFriends, IconTrophy, IconBoard, IconMiniView,
 } from './components/icons';
 
@@ -92,6 +94,17 @@ const readMiniPref = (): boolean => {
   try { return localStorage.getItem('agentverse:mini') === 'on'; } catch { return false; }
 };
 
+// Which Quest Board demo quests have been run to completion (victory or
+// defeat) at least once — persisted so the checkmarks survive a refresh.
+const readCompletedDemos = (): Set<number> => {
+  try {
+    const raw = localStorage.getItem('agentverse:completedDemos');
+    return new Set(raw ? (JSON.parse(raw) as number[]) : []);
+  } catch {
+    return new Set();
+  }
+};
+
 export function App() {
   const [task, setTask] = useState('Research the biggest AI agent news this week');
   const [sfxOn, setSfxOn] = useState(readSfxPref); // ON by default
@@ -105,10 +118,11 @@ export function App() {
   const [awakenedBossName, setAwakenedBossName] = useState<string | undefined>();
   const [themedBossOn, setThemedBossOnState] = useState(readThemedBossPref);
   const [hitlOn, setHitlOnState] = useState(readHitlPref);
-  const [selectedDemo, setSelectedDemo] = useState<number | null>(null);
-  const [showDemoPanel, setShowDemoPanel] = useState(false);
   const [comingSoon, setComingSoon] = useState<{ title: string; desc: string } | null>(null);
   const [miniMode, setMiniModeState] = useState(readMiniPref);
+  const [showQuestBoard, setShowQuestBoard] = useState(false);
+  const [completedDemos, setCompletedDemos] = useState<Set<number>>(readCompletedDemos);
+  const [activeDemoId, setActiveDemoId] = useState<number | null>(null);
   const taskInputRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-grow the quest textarea with its content instead of scrolling internally.
@@ -121,60 +135,19 @@ export function App() {
 
   const { phase, round, log, answer, sources, streamDone } = useBattle();
 
-  // 6 high-variance demo cases spanning different domains, tools, and complexity
-  // (code, research, creative, real-time social, analysis, multi-step planning)
-  const demoCases = [
-    {
-      id: 1,
-      title: "Code Healer",
-      emoji: "🔧",
-      desc: "Real bug fix + test verification (code_execution heavy)",
-      prompt: `Fix this bug and verify with a test: function sumArray(arr) { let total; for (let i=0; i<=arr.length; i++) { total += arr[i]; } return total; }`,
-    },
-    {
-      id: 2,
-      title: "Market Oracle",
-      emoji: "📈",
-      desc: "Deep research on latest AI investment trends (web_search + synthesis)",
-      prompt: `Provide a comprehensive analysis of the top 5 AI investment trends in 2026. Include key companies, funding numbers, and why each trend matters. Cite sources.`,
-    },
-    {
-      id: 3,
-      title: "Creative Director",
-      emoji: "🎨",
-      desc: "Multi-step creative task (image concept + prompt engineering)",
-      prompt: `Design a complete visual identity for a new cyber-fantasy JRPG called "AgentVerse". Propose hero, villain, logo concept, color palette, and write 3 detailed Grok Imagine prompts that would generate perfect key art.`,
-    },
-    {
-      id: 4,
-      title: "X Pulse",
-      emoji: "⚡",
-      desc: "Real-time social sentiment + trend analysis (x_search dominant)",
-      prompt: `What's the current sentiment on X about Grok 4 versus Claude 4 and GPT-5? Identify the top 3 most discussed strengths/weaknesses and any viral memes or controversies in the last 48 hours.`,
-    },
-    {
-      id: 5,
-      title: "Policy Analyst",
-      emoji: "📜",
-      desc: "Complex multi-tool reasoning on real-world regulation (web_search + critical thinking)",
-      prompt: `Analyze the potential impact of the EU AI Act on open-source model development in 2026. Compare it with US policy, predict the biggest winners and losers among AI companies, and suggest one strategic pivot for xAI.`,
-    },
-    {
-      id: 6,
-      title: "Epic Quest Master",
-      emoji: "🗡️",
-      desc: "Full multi-tool creative + technical combo (research + code + narrative)",
-      prompt: `Create a complete 5-room text adventure game set in an AI research lab that has gone rogue. Include: (1) rich narrative, (2) interesting puzzles that require code or search to solve, (3) write the full working Python code using only standard library, and (4) test that it runs without errors.`,
-    },
-  ];
-
-  const loadDemo = (index: number) => {
-    const demo = demoCases[index];
-    setTask(demo.prompt);
-    setSelectedDemo(index);
-    // Optional: auto-start after load (uncomment if desired)
-    // setTimeout(() => startQuest(), 100);
-  };
+  // A Quest Board demo finishes (win or lose) while it's the active demo ->
+  // mark it done and persist so the checkmark survives a refresh.
+  useEffect(() => {
+    if (activeDemoId === null) return;
+    if (phase !== 'victory' && phase !== 'defeat') return;
+    setCompletedDemos((prev) => {
+      if (prev.has(activeDemoId)) return prev;
+      const next = new Set(prev).add(activeDemoId);
+      try { localStorage.setItem('agentverse:completedDemos', JSON.stringify([...next])); } catch { /* ignore */ }
+      return next;
+    });
+    setActiveDemoId(null);
+  }, [phase, activeDemoId]);
 
   useBattleSfx(sfxOn);
 
@@ -202,7 +175,11 @@ export function App() {
   const fighting = phase === 'fighting';
   const summoningBoss = bossPhase !== null;
   const showReport = (phase === 'victory' || phase === 'defeat') && !reportDismissed;
-  const startQuest = async () => {
+  // taskOverride lets a Quest Board card launch its prompt directly instead
+  // of going through the (stale, not-yet-committed) `task` state value.
+  const startQuest = async (taskOverride?: string) => {
+    const activeTask = taskOverride ?? task;
+    if (taskOverride) setTask(taskOverride);
     setReportDismissed(false);
     if (sfxOn) resumeAudio(); // unlock the audio context within this click (browser policy)
 
@@ -211,7 +188,7 @@ export function App() {
     // boss silently on failure/timeout, or immediately if the toggle is off.
     if (themedBossOn) {
       setBossPhase('summoning');
-      const { sprites } = await requestTaskBoss(task);
+      const { sprites } = await requestTaskBoss(activeTask);
       const chars = useCharacters.getState();
       if (sprites) {
         chars.setBoss(sprites);
@@ -225,7 +202,13 @@ export function App() {
     } else {
       useCharacters.getState().resetBoss();
     }
-    runAgent(task, { hitl: hitlOn });
+    runAgent(activeTask, { hitl: hitlOn });
+  };
+
+  const runDemoQuest = (quest: DemoQuest) => {
+    setActiveDemoId(quest.id);
+    setShowQuestBoard(false);
+    startQuest(quest.prompt);
   };
 
   return (
@@ -252,19 +235,13 @@ export function App() {
         <GameButton onClick={() => setDesigning('boss')}><IconSkull size={15} /> Design Boss</GameButton>
         <GameButton onClick={() => setShowHeroes(true)}><IconRoster size={15} /> Heroes</GameButton>
         <GameButton onClick={() => setLoadout(true)}><IconLoadout size={15} /> Equipment</GameButton>
-        <GameButton
-          onClick={() => setShowDemoPanel(!showDemoPanel)}
-          variant={showDemoPanel ? "gold" : "ghost"}
-        >
-          <IconBook size={15} /> {showDemoPanel ? 'Hide Demos' : 'Show 6 Demos'}
-        </GameButton>
         <GameButton onClick={() => setComingSoon({ title: '🧑‍🤝‍🧑 FRIENDS', desc: 'Add friends and watch each other\'s quests unfold.' })}>
           <IconFriends size={15} /> Friends
         </GameButton>
         <GameButton onClick={() => setComingSoon({ title: '🏆 LEADERBOARD', desc: 'Rank agent runs by HP remaining, speed, and tool efficiency.' })}>
           <IconTrophy size={15} /> Leaderboard
         </GameButton>
-        <GameButton onClick={() => setComingSoon({ title: '📌 QUEST BOARD', desc: 'A home base listing every pending and completed quest.' })}>
+        <GameButton onClick={() => setShowQuestBoard(true)}>
           <IconBoard size={15} /> Quest Board
         </GameButton>
         <GameButton variant={miniMode ? 'gold' : 'ghost'} onClick={() => changeMini(!miniMode)}>
@@ -273,72 +250,13 @@ export function App() {
         <GameButton onClick={() => setShowSettings(true)}><IconSettings size={15} /> Settings</GameButton>
       </div>
 
-      {/* Collapsible Demo Cases Panel */}
-      <AnimatePresence>
-        {showDemoPanel && (
-          <motion.div
-            initial={{ opacity: 0, height: 0, marginBottom: 0 }}
-            animate={{ opacity: 1, height: 'auto', marginBottom: 20 }}
-            exit={{ opacity: 0, height: 0, marginBottom: 0 }}
-            transition={{ duration: 0.3 }}
-            style={{ overflow: 'hidden' }}
-          >
-            <div style={{ ...panel, padding: '16px 18px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14, fontFamily: PIXEL, fontSize: 14, color: '#ffd166' }}>
-                <IconBook size={20} /> 6 DEMO QUESTS — Click any card to load prompt
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(168px, 1fr))', gap: 10 }}>
-                {demoCases.map((demo, index) => {
-                  const isSelected = selectedDemo === index;
-                  return (
-                    <motion.button
-                      key={demo.id}
-                      whileHover={{ scale: 1.03, y: -2 }}
-                      whileTap={{ scale: 0.97 }}
-                      onClick={() => loadDemo(index)}
-                      style={{
-                        padding: '14px 16px',
-                        borderRadius: 10,
-                        border: `2px solid ${isSelected ? '#ffd166' : '#3a2f66'}`,
-                        background: isSelected 
-                          ? 'linear-gradient(145deg, rgba(255,209,102,0.15), rgba(26,22,48,0.8))' 
-                          : 'rgba(26, 22, 48, 0.7)',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        transition: 'all 0.1s ease',
-                        fontFamily: 'inherit',
-                        boxShadow: isSelected ? '0 0 16px rgba(255, 209, 102, 0.4)' : 'none',
-                      }}
-                    >
-                      <div style={{ fontSize: 26, marginBottom: 6, lineHeight: 1 }}>{demo.emoji}</div>
-                      <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 4, color: isSelected ? '#ffd166' : '#e6e2ff' }}>
-                        {demo.title}
-                      </div>
-                      <div style={{ fontSize: 12, color: '#a79be0', lineHeight: 1.4, minHeight: '2.8em' }}>
-                        {demo.desc}
-                      </div>
-                    </motion.button>
-                  );
-                })}
-              </div>
-              <div style={{ marginTop: 16, fontSize: 12, color: '#655e90', textAlign: 'center', fontStyle: 'italic' }}>
-                Each demo is tuned to trigger specific tools (Intel Summon ⚡, Forge, multi-tool combos), themed bosses, and rich battle flow.
-              </div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Quest console */}
       <div style={{ ...panel, display: 'flex', gap: 12, padding: 12, marginBottom: 20, alignItems: 'flex-end' }}>
         <span style={{ color: '#57d9a3', fontWeight: 700, paddingBottom: 10 }}>▸</span>
         <textarea
           ref={taskInputRef}
           value={task}
-          onChange={(e) => {
-            setTask(e.target.value);
-            setSelectedDemo(null); // clear selection when user edits manually
-          }}
+          onChange={(e) => setTask(e.target.value)}
           onKeyDown={(e) => {
             // Enter inserts a newline (default textarea behavior); Shift+Enter submits.
             if (e.key === 'Enter' && e.shiftKey) {
@@ -355,7 +273,7 @@ export function App() {
             lineHeight: 1.5, minHeight: 22, maxHeight: 200, overflowY: 'auto',
           }}
         />
-        <GameButton variant="primary" disabled={fighting || summoningBoss} onClick={startQuest}>
+        <GameButton variant="primary" disabled={fighting || summoningBoss} onClick={() => startQuest()}>
           {fighting
             ? <><IconSwords size={15} /> Fighting…</>
             : summoningBoss
@@ -474,6 +392,20 @@ export function App() {
 
       <AnimatePresence>
         {miniMode && <MiniWidget key="mini-widget" onClose={() => changeMini(false)} />}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showQuestBoard && (
+          <QuestBoard
+            key="quest-board"
+            quests={DEMO_QUESTS}
+            completed={completedDemos}
+            activeId={activeDemoId}
+            disabled={fighting || summoningBoss}
+            onRun={runDemoQuest}
+            onClose={() => setShowQuestBoard(false)}
+          />
+        )}
       </AnimatePresence>
     </div>
   );

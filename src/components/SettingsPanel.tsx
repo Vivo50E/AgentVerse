@@ -17,15 +17,19 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
       onClick={() => onChange(!on)}
       aria-pressed={on}
       style={{
-        width: 52, height: 28, borderRadius: 999, border: `1px solid ${on ? C.good : C.border}`,
-        background: on ? 'linear-gradient(90deg,#3fb489,#57d9a3)' : '#231d44',
-        position: 'relative', cursor: 'pointer', padding: 0, transition: 'background .2s',
+        width: 52, height: 28, borderRadius: 999, flexShrink: 0,
+        // Off-state needs real contrast against the panel's near-identical dark
+        // purple bg, or the track disappears and it just reads as a stray dot.
+        border: `2px solid ${on ? C.good : '#5a4f92'}`,
+        background: on ? 'linear-gradient(90deg,#3fb489,#57d9a3)' : 'linear-gradient(180deg,#2a2350,#1c1740)',
+        boxShadow: on ? `0 0 10px ${C.good}55` : 'inset 0 2px 4px rgba(0,0,0,0.45)',
+        position: 'relative', cursor: 'pointer', padding: 0, transition: 'background .2s, border-color .2s',
       }}
     >
       <motion.span
-        animate={{ x: on ? 24 : 2 }}
+        animate={{ x: on ? 26 : 4 }}
         transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-        style={{ position: 'absolute', top: 2, left: 0, width: 22, height: 22, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.5)' }}
+        style={{ position: 'absolute', top: 3, left: 0, width: 20, height: 20, borderRadius: '50%', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,0.5)' }}
       />
     </button>
   );
