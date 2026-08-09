@@ -152,9 +152,11 @@ async function runHitl(task: string, ability: AbilityProfile): Promise<void> {
 
 export async function runAgent(task: string, opts: RunOptions = {}) {
   const { start, apply, endStream } = useBattle.getState();
-  // If a task-themed boss (plan.md §7d) was generated before this call, its
-  // sprite name carries into the actor so the log/HP bar match what's on screen.
-  start(useCharacters.getState().boss?.name);
+  // Carry the currently-equipped hero/boss sprite names into the actors so the
+  // log/HP bar/report card show the real character (e.g. "Ani"), not a generic
+  // placeholder — task-themed boss gen (plan.md §7d) may have renamed the boss.
+  const chars0 = useCharacters.getState();
+  start(chars0.boss?.name, chars0.hero?.name);
   useProgression.getState().clearAward(); // fresh quest, drop the previous level-up banner
 
   // Pick the battle background whose theme best fits this task; falls back to

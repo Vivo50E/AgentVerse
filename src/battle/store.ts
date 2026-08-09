@@ -41,7 +41,7 @@ function initialState(): Omit<BattleState, never> {
 let flowId = 0;
 
 interface Store extends BattleState {
-  start: (bossName?: string) => void;
+  start: (bossName?: string, heroName?: string) => void;
   apply: (action: BattleAction) => void;
   endStream: () => void;
   reset: () => void;
@@ -52,12 +52,15 @@ interface Store extends BattleState {
 export const useBattle = create<Store>((set, get) => ({
   ...initialState(),
 
-  start: (bossName) => {
+  start: (bossName, heroName) => {
     const s = initialState();
     // Task-themed boss generation (plan.md §7d) may have already renamed the
     // boss sprite before the quest starts — carry that name into the actor.
     if (bossName) s.boss = { ...s.boss, name: bossName };
-    return set({ 
+    // Carry the currently-equipped hero sprite's name (e.g. a designed/roster
+    // hero like "Ani") into the actor, instead of the generic "Agent Grok".
+    if (heroName) s.hero = { ...s.hero, name: heroName };
+    return set({
       ...s, 
       phase: 'fighting', 
       round: 1,

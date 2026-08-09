@@ -511,7 +511,9 @@ export function JourneyStage() {
                 gap: 0,
               }}
             >
-              <MiniHpBar pct={heroActor.maxHp > 0 ? (heroActor.hp / heroActor.maxHp) * 100 : 0} color="#57d9a3" label={heroActor.name} />
+              {/* Prefer the equipped character's real name (e.g. "Ani") over the
+                  battle actor's name, which only syncs once a quest starts. */}
+              <MiniHpBar pct={heroActor.maxHp > 0 ? (heroActor.hp / heroActor.maxHp) * 100 : 0} color="#57d9a3" label={heroSprites?.name || heroActor.name} />
               {/* Melee lunge layer: dashes toward the foe on a hit (no-op for
                   ranged/magic heroes, whose projectiles cross the gap instead).
                   Negative top margin absorbs the sprite frame's transparent
