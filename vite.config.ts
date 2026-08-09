@@ -56,10 +56,12 @@ export default defineConfig({
           { src: '/icons/maskable-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
+      // Deliberately OFF in dev: a service worker intercepting requests under
+      // `npm run dev` fights Vite's HMR — you'd see stale cached content after
+      // edits instead of the fresh module. Test installability via
+      // `npm run build && npm run preview` instead (verified working there).
       devOptions: {
-        // Let the SW run under `npm run dev` too, so install can be tested locally.
-        enabled: true,
-        type: 'module',
+        enabled: false,
       },
     }),
   ],
