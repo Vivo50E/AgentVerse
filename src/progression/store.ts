@@ -26,9 +26,9 @@ export interface Award {
 
 // How each cast skill trains the six axes (weights sum ~1 per skill).
 const SKILL_GROWTH: Record<SkillKind, Partial<Record<Stat, number>>> = {
-  intel_summon: { skills: 0.6, knowledge: 0.4 },
-  forge: { reasoning: 0.5, prompt: 0.3, skills: 0.2 },
-  strike: { skills: 1 },
+  intel_summon: { tools: 0.6, knowledge: 0.4 },
+  forge: { reasoning: 0.5, autonomy: 0.3, tools: 0.2 },
+  strike: { tools: 1 },
   focus: { reasoning: 0.6, memory: 0.4 },
 };
 

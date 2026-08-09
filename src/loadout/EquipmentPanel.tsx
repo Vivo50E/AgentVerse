@@ -20,12 +20,12 @@ const RARITY: Record<string, string> = {
 
 const GEAR_SLOTS: { key: string; label: string; cat: Stat; empty: string }[] = [
   { key: 'helm', label: 'Helm', cat: 'knowledge', empty: '🎓' },
-  { key: 'armor', label: 'Armor', cat: 'prompt', empty: '🧥' },
+  { key: 'armor', label: 'Armor', cat: 'autonomy', empty: '🧥' },
   { key: 'charm', label: 'Charm', cat: 'memory', empty: '🧿' },
   { key: 'amulet', label: 'Amulet', cat: 'reasoning', empty: '📿' },
-  { key: 'ring', label: 'Ring', cat: 'mcp', empty: '💍' },
+  { key: 'ring', label: 'Ring', cat: 'planning', empty: '💍' },
 ];
-const SKILL_SOCKETS = 3;
+const TOOL_SOCKETS = 3;
 
 // A single game-style slot frame: beveled, corner ticks, rarity glow when filled.
 function Slot({
@@ -35,7 +35,7 @@ function Slot({
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
       <motion.div whileHover={{ scale: 1.07 }} whileTap={{ scale: 0.96 }} onClick={onClick}
-        title={item ? `${item.name} — ${item.desc}` : `Empty ${label}`}
+        title={item ? `${item.name} — ${item.desc}\n\nEffect: ${item.use}` : `Empty ${label}`}
         style={{
           width: 62, height: 62, cursor: 'pointer', position: 'relative',
           borderRadius: 9,
@@ -84,7 +84,7 @@ export function EquipmentPanel({ onClose }: { onClose?: () => void }) {
   const [picking, setPicking] = useState<Stat | null>(null);
 
   const equippedIn = (cat: Stat) => CATALOG.find((i) => i.category === cat && equipped[i.id]) ?? null;
-  const equippedSkills = CATALOG.filter((i) => i.category === 'skills' && equipped[i.id]);
+  const equippedTools = CATALOG.filter((i) => i.category === 'tools' && equipped[i.id]);
 
   function equipSingle(item: EquipmentItem) {
     const prev = equippedIn(item.category);
@@ -92,9 +92,9 @@ export function EquipmentPanel({ onClose }: { onClose?: () => void }) {
     equip(item.id);
     setPicking(null);
   }
-  function equipSkill(item: EquipmentItem) {
+  function equipTool(item: EquipmentItem) {
     if (equipped[item.id]) { unequip(item.id); return; }
-    if (equippedSkills.length >= SKILL_SOCKETS) return;
+    if (equippedTools.length >= TOOL_SOCKETS) return;
     equip(item.id);
     setPicking(null);
   }
@@ -142,12 +142,12 @@ export function EquipmentPanel({ onClose }: { onClose?: () => void }) {
         <div style={{ display: 'flex', gap: 16, padding: 18, flexWrap: 'wrap' }}>
           {/* ── Paperdoll ─────────────────────────────────────────── */}
           <div style={{ ...subPanel, flex: '1 1 420px' }}>
-            <div style={sectionLabel}>Active Skills · real agent tools</div>
+            <div style={sectionLabel}>Active Tools · real agent tools</div>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 18 }}>
-              {Array.from({ length: SKILL_SOCKETS }).map((_, i) => {
-                const item = equippedSkills[i] ?? null;
-                return <Slot key={i} item={item} empty="➕" label={`Skill ${i + 1}`} live
-                  onClick={() => (item ? unequip(item.id) : setPicking('skills'))} />;
+              {Array.from({ length: TOOL_SOCKETS }).map((_, i) => {
+                const item = equippedTools[i] ?? null;
+                return <Slot key={i} item={item} empty="➕" label={`Tool ${i + 1}`} live
+                  onClick={() => (item ? unequip(item.id) : setPicking('tools'))} />;
               })}
             </div>
 
@@ -202,13 +202,14 @@ export function EquipmentPanel({ onClose }: { onClose?: () => void }) {
               <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} onClick={(e) => e.stopPropagation()}
                 style={{ width: 'min(540px, 92vw)', maxHeight: '72vh', overflowY: 'auto', ...panelFrame, padding: 16 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, alignItems: 'center' }}>
-                  <b style={{ letterSpacing: 1 }}>{picking === 'skills' ? '🗡 SOCKET A SKILL' : `EQUIP ${STAT_LABELS[picking].toUpperCase()}`}</b>
+                  <b style={{ letterSpacing: 1 }}>{picking === 'tools' ? '🗡 SOCKET A TOOL' : `EQUIP ${STAT_LABELS[picking].toUpperCase()}`}</b>
                   <span style={{ color: '#8b84b8', cursor: 'pointer' }} onClick={() => setPicking(null)}>✕</span>
                 </div>
                 {CATALOG.filter((i) => i.category === picking).map((item) => {
                   const on = !!equipped[item.id];
                   return (
-                    <motion.div key={item.id} whileHover={{ x: 3 }} onClick={() => (picking === 'skills' ? equipSkill(item) : equipSingle(item))}
+                    <motion.div key={item.id} whileHover={{ x: 3 }} onClick={() => (picking === 'tools' ? equipTool(item) : equipSingle(item))}
+                      title={`Effect: ${item.use}`}
                       style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '9px 11px', margin: '7px 0', borderRadius: 9, cursor: 'pointer', border: `1px solid ${on ? RARITY[item.rarity] : '#2f2758'}`, background: on ? `${RARITY[item.rarity]}1a` : '#181430', boxShadow: on ? `0 0 12px ${RARITY[item.rarity]}55` : 'none' }}>
                       <span style={{ fontSize: 26, width: 34, textAlign: 'center' }}>{item.icon}</span>
                       <div style={{ flex: 1 }}>
@@ -217,7 +218,10 @@ export function EquipmentPanel({ onClose }: { onClose?: () => void }) {
                           {item.toolId && <span style={{ color: '#57d9a3', fontSize: 10 }}> ● {item.toolId}</span>}
                         </div>
                         <div style={{ color: '#8b84b8', fontSize: 11 }}>{item.desc}</div>
-                        <div style={{ color: '#b7adf0', fontSize: 11, marginTop: 2 }}>
+                        <div style={{ color: '#5eead4', fontSize: 10.5, marginTop: 2, fontStyle: 'italic' }}>
+                          ⓘ {item.use}
+                        </div>
+                        <div style={{ color: '#b7adf0', fontSize: 11, marginTop: 3 }}>
                           {Object.entries(item.bonuses).map(([k, v]) => `+${v} ${STAT_LABELS[k as Stat]}`).join('   ')}
                         </div>
                       </div>
@@ -225,8 +229,8 @@ export function EquipmentPanel({ onClose }: { onClose?: () => void }) {
                     </motion.div>
                   );
                 })}
-                {picking === 'skills' && equippedSkills.length >= SKILL_SOCKETS && (
-                  <div style={{ color: '#ffb454', fontSize: 11, marginTop: 6 }}>All 3 skill sockets full — tap an equipped skill to remove it.</div>
+                {picking === 'tools' && equippedTools.length >= TOOL_SOCKETS && (
+                  <div style={{ color: '#ffb454', fontSize: 11, marginTop: 6 }}>All 3 tool sockets full — tap an equipped tool to remove it.</div>
                 )}
               </motion.div>
             </motion.div>

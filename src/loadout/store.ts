@@ -10,7 +10,7 @@ const BASE_STAT = 15;
 const MAX_STAT = 100;
 const MIN_STAT = 0;
 
-// A sensible starting kit: two search skills, the forge, a prompt and a crown.
+// A sensible starting kit: two search tools, the code forge, an autonomy sigil, and a reasoning crown.
 const DEFAULT_EQUIPPED = [
   'web-search-blade',
   'x-search-longbow',
@@ -62,12 +62,12 @@ function reasoningEffortForStat(reasoning: number): ReasoningEffort {
   return 'none';
 }
 
-// Prompt gear (Novice Scroll, Expert Sigil, Chain-of-Thought Rune, ...) scales
-// how much chain-of-thought/self-check instruction rides along in the agent's
-// system prompt — see PROMPT_TIER_TEXT in server/index.ts.
-function promptTierForStat(prompt: number): PromptTier {
-  if (prompt >= 55) return 'selfVerify';
-  if (prompt >= 25) return 'stepByStep';
+// Autonomy gear (Novice Scroll, Expert Sigil, Chain-of-Thought Rune, ...)
+// scales how much self-verification/self-check instruction rides along in
+// the agent's system prompt — see PROMPT_TIER_TEXT in server/index.ts.
+function promptTierForStat(autonomy: number): PromptTier {
+  if (autonomy >= 55) return 'selfVerify';
+  if (autonomy >= 25) return 'stepByStep';
   return 'basic';
 }
 
@@ -97,5 +97,5 @@ export const useLoadout = create<LoadoutStore>((set, get) => ({
   },
   getEnabledTools: () => computeEnabledTools(get().equipped),
   getReasoningEffort: () => reasoningEffortForStat(computeStats(get().equipped).reasoning),
-  getPromptTier: () => promptTierForStat(computeStats(get().equipped).prompt),
+  getPromptTier: () => promptTierForStat(computeStats(get().equipped).autonomy),
 }));

@@ -2,7 +2,7 @@
 // stat polygon animates whenever the equipped loadout changes.
 import { motion } from 'framer-motion';
 import type { Stat } from './types';
-import { STATS, STAT_LABELS } from './types';
+import { STATS, STAT_LABELS, STAT_DESCRIPTIONS } from './types';
 
 const ACCENT = '#7c5cff';
 const GRID = '#2a2450';
@@ -111,7 +111,8 @@ export function HexRadar({ stats, size = 320 }: { stats: Record<Stat, number>; s
         const [lx, ly] = pointAt(cx, cy, labelR, i);
         const anchor = Math.abs(lx - cx) < 1 ? 'middle' : lx > cx ? 'start' : 'end';
         return (
-          <g key={`label-${s}`}>
+          <g key={`label-${s}`} style={{ cursor: 'help' }}>
+            <title>{`${STAT_LABELS[s]} — ${STAT_DESCRIPTIONS[s]}`}</title>
             <text
               x={lx}
               y={ly - 4}

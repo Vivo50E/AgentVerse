@@ -1,77 +1,87 @@
 // The gear catalog. Each item's primary bonus lands on its own category,
 // scaled by rarity (common +10, rare +18, epic +26, legendary +34), with the
-// occasional small secondary bonus. Skills gear carries a real backend toolId.
+// occasional small secondary bonus. Tools gear carries a real backend toolId;
+// Reasoning/Autonomy gear feeds real xAI provider options (see store.ts).
+// `use` is plain-English hover text explaining what equipping the item
+// actually does — separate from the RPG flavor in `desc`.
 import type { EquipmentItem } from './types';
 
 export const CATALOG: EquipmentItem[] = [
-  // ─── Skills (map to real tools) ───────────────────────────────────────────
+  // ─── Tool Use (map to real backend tools) ─────────────────────────────────
   {
     id: 'web-search-blade',
     name: 'Web Search Blade',
-    category: 'skills',
+    category: 'tools',
     icon: '🗡️',
     rarity: 'rare',
-    bonuses: { skills: 18, knowledge: 4 },
+    bonuses: { tools: 18, knowledge: 4 },
     toolId: 'web_search',
     desc: 'A keen edge that slices through the open web for fresh intel.',
+    use: 'Enables the agent\'s real web_search tool for this run — it can browse the live web while solving your quest.',
   },
   {
     id: 'x-search-longbow',
     name: 'X-Search Longbow',
-    category: 'skills',
+    category: 'tools',
     icon: '🏹',
     rarity: 'rare',
-    bonuses: { skills: 18, memory: 3 },
+    bonuses: { tools: 18, memory: 3 },
     toolId: 'x_search',
     desc: 'Looses arrows into the timeline to pluck real-time chatter.',
+    use: 'Enables the agent\'s real x_search tool for this run — it can pull live X posts for real-time context.',
   },
   {
     id: 'code-forge-hammer',
     name: 'Code Forge Hammer',
-    category: 'skills',
+    category: 'tools',
     icon: '🔨',
     rarity: 'epic',
-    bonuses: { skills: 26, reasoning: 4 },
+    bonuses: { tools: 26, reasoning: 4 },
     toolId: 'code_execution',
     desc: 'Hammers raw logic into runnable code at the anvil of execution.',
+    use: 'Enables the agent\'s real code_execution tool for this run — it can write and actually run code.',
   },
   {
     id: 'omni-tool',
     name: 'Omni-Tool',
-    category: 'skills',
+    category: 'tools',
     icon: '🛠️',
     rarity: 'legendary',
-    bonuses: { skills: 34, mcp: 6, reasoning: 6 },
+    bonuses: { tools: 34, planning: 6, reasoning: 6 },
     desc: 'A mythic multitool. Radiant power, but wired to no single tool.',
+    use: 'A big Tool Use stat boost, but it isn\'t wired to one specific backend tool — pair it with a real tool item to actually enable a capability.',
   },
 
-  // ─── MCP (cosmetic / stat only) ───────────────────────────────────────────
+  // ─── Planning (stat-only — shapes the ability profile, not a live tool) ──
   {
-    id: 'github-relic',
-    name: 'GitHub Relic',
-    category: 'mcp',
-    icon: '🐙',
+    id: 'strategists-compass',
+    name: "Strategist's Compass",
+    category: 'planning',
+    icon: '🧭',
     rarity: 'epic',
-    bonuses: { mcp: 26, skills: 4 },
-    desc: 'An octo-sigil that binds the agent to a realm of repositories.',
+    bonuses: { planning: 26, tools: 4 },
+    desc: 'Always points toward the next right move, three steps ahead.',
+    use: 'Raises Planning — reflects how well the agent breaks the quest into ordered sub-goals instead of acting one step at a time.',
   },
   {
-    id: 'filesystem-talisman',
-    name: 'Filesystem Talisman',
-    category: 'mcp',
-    icon: '📁',
+    id: 'tacticians-map',
+    name: "Tactician's Map",
+    category: 'planning',
+    icon: '🗺️',
     rarity: 'rare',
-    bonuses: { mcp: 18, memory: 3 },
-    desc: 'Opens doorways to every folder in the mortal disk.',
+    bonuses: { planning: 18, memory: 3 },
+    desc: 'Charts the whole dungeon before the first step is taken.',
+    use: 'Raises Planning — a stat that reflects (but doesn\'t force) the agent\'s tendency to sequence its approach before diving in.',
   },
   {
-    id: 'slack-sigil',
-    name: 'Slack Sigil',
-    category: 'mcp',
-    icon: '💬',
+    id: 'scouts-itinerary',
+    name: "Scout's Itinerary",
+    category: 'planning',
+    icon: '📋',
     rarity: 'common',
-    bonuses: { mcp: 10 },
-    desc: 'A humble rune that whispers into distant channels.',
+    bonuses: { planning: 10 },
+    desc: 'A rough checklist, scrawled in haste but better than nothing.',
+    use: 'A small Planning stat boost — shapes the ability profile shown in the hex chart and Power total.',
   },
 
   // ─── Knowledge ────────────────────────────────────────────────────────────
@@ -83,6 +93,7 @@ export const CATALOG: EquipmentItem[] = [
     rarity: 'common',
     bonuses: { knowledge: 10 },
     desc: 'A well-thumbed tome of manuals and how-tos.',
+    use: 'A small Knowledge stat boost — reflects the depth of grounding the agent draws on before it acts.',
   },
   {
     id: 'vector-tome',
@@ -92,6 +103,7 @@ export const CATALOG: EquipmentItem[] = [
     rarity: 'epic',
     bonuses: { knowledge: 26, memory: 5 },
     desc: 'Embeds a thousand truths into navigable latent space.',
+    use: 'Raises Knowledge — the stat that stands in for how much accurate world/domain grounding backs up the agent\'s answers.',
   },
   {
     id: 'wiki-grimoire',
@@ -101,35 +113,39 @@ export const CATALOG: EquipmentItem[] = [
     rarity: 'rare',
     bonuses: { knowledge: 18, reasoning: 3 },
     desc: 'An ever-editing grimoire of the world’s collective lore.',
+    use: 'Raises Knowledge — the broader the agent\'s grounding, the fewer facts it has to guess at.',
   },
 
-  // ─── Prompt ───────────────────────────────────────────────────────────────
+  // ─── Autonomy (feeds a real prompt-scaffolding tier — see store.ts) ──────
   {
     id: 'novice-scroll',
     name: 'Novice Scroll',
-    category: 'prompt',
+    category: 'autonomy',
     icon: '📜',
     rarity: 'common',
-    bonuses: { prompt: 10 },
+    bonuses: { autonomy: 10 },
     desc: 'A starter incantation — simple, but it gets the job done.',
+    use: 'Raises Autonomy toward the "basic" prompt tier — the agent gets a plain instruction with no built-in self-checking.',
   },
   {
     id: 'expert-sigil',
     name: 'Expert Sigil',
-    category: 'prompt',
+    category: 'autonomy',
     icon: '✍️',
     rarity: 'rare',
-    bonuses: { prompt: 18, reasoning: 3 },
+    bonuses: { autonomy: 18, reasoning: 3 },
     desc: 'Finely-tuned phrasing that bends the model to your will.',
+    use: 'Raises Autonomy toward the "step-by-step" prompt tier — the agent is instructed to work through the task methodically.',
   },
   {
     id: 'chain-of-thought-rune',
     name: 'Chain-of-Thought Rune',
-    category: 'prompt',
+    category: 'autonomy',
     icon: '🔗',
     rarity: 'epic',
-    bonuses: { prompt: 26, reasoning: 6 },
+    bonuses: { autonomy: 26, reasoning: 6 },
     desc: 'Etches a step-by-step path so the mind never loses its way.',
+    use: 'Raises Autonomy toward the "self-verify" prompt tier — the agent is instructed to double-check and self-correct its own steps before finishing.',
   },
 
   // ─── Memory ───────────────────────────────────────────────────────────────
@@ -141,6 +157,7 @@ export const CATALOG: EquipmentItem[] = [
     rarity: 'common',
     bonuses: { memory: 10 },
     desc: 'Holds the last few turns close, then gently lets them go.',
+    use: 'A small Memory stat boost — reflects how well the agent keeps track of what happened earlier in a long run.',
   },
   {
     id: 'long-context-amulet',
@@ -150,6 +167,7 @@ export const CATALOG: EquipmentItem[] = [
     rarity: 'epic',
     bonuses: { memory: 26, knowledge: 5 },
     desc: 'A vast amulet that remembers whole sagas without strain.',
+    use: 'Raises Memory — the stat that stands in for context retention across a long, multi-step quest.',
   },
   {
     id: 'episodic-locket',
@@ -157,19 +175,21 @@ export const CATALOG: EquipmentItem[] = [
     category: 'memory',
     icon: '💾',
     rarity: 'rare',
-    bonuses: { memory: 18, prompt: 3 },
+    bonuses: { memory: 18, autonomy: 3 },
     desc: 'Keepsake of past quests, recalled exactly when needed.',
+    use: 'Raises Memory — helps the agent stay consistent with earlier steps instead of contradicting itself.',
   },
 
-  // ─── Reasoning ────────────────────────────────────────────────────────────
+  // ─── Reasoning (feeds xAI's real reasoningEffort — see store.ts) ─────────
   {
     id: 'grok-crown',
     name: 'Grok-4.3 Crown',
     category: 'reasoning',
     icon: '👑',
     rarity: 'legendary',
-    bonuses: { reasoning: 34, prompt: 6, knowledge: 4 },
+    bonuses: { reasoning: 34, autonomy: 6, knowledge: 4 },
     desc: 'The sovereign crown of deep thought — nothing outwits it.',
+    use: 'Raises Reasoning toward the "high" xAI reasoningEffort tier — the agent thinks longer and deeper before every move.',
   },
   {
     id: 'multi-agent-diadem',
@@ -177,8 +197,9 @@ export const CATALOG: EquipmentItem[] = [
     category: 'reasoning',
     icon: '💠',
     rarity: 'epic',
-    bonuses: { reasoning: 26, mcp: 5 },
+    bonuses: { reasoning: 26, planning: 5 },
     desc: 'Splits the mind into a council of cooperating selves.',
+    use: 'Raises Reasoning toward the "medium" xAI reasoningEffort tier — more deliberate multi-step inference per move.',
   },
   {
     id: 'logic-circlet',
@@ -188,5 +209,6 @@ export const CATALOG: EquipmentItem[] = [
     rarity: 'common',
     bonuses: { reasoning: 10 },
     desc: 'A modest band that keeps deductions crisp and clean.',
+    use: 'A small Reasoning stat boost, nudging the agent toward the "low" xAI reasoningEffort tier.',
   },
 ];
