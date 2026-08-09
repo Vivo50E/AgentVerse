@@ -1,8 +1,8 @@
 // QuestTrack — a horizontal RPG "quest" progress bar for the battle area.
 // Reads useBattle via selectors and visualizes overall progress as milestone
 // nodes along an animated fill. Self-contained, inline styles, no props required.
-import { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useBattle } from '../battle/store';
 import { useQuestStages } from '../battle/questStages';
 import type { BattleAction, FlowStep } from '../battle/types';
@@ -81,7 +81,32 @@ export function QuestTrack({ style, className }: QuestTrackProps) {
   const lastAction = useBattle((s) => s.lastAction);
   const flow = useBattle((s) => s.flow);
   const stageLabels = useQuestStages((s) => s.labels);
-  const [mode, setMode] = useState<'stages' | 'live'>('stages');
+  const [mode, setMode] = useState<'stages' | 'live'>('live');
+
+  // Dynamic live chain of UNKNOWN length: start with a single "?", then each
+  // real agent step is appended (replacing the trailing "?"), with a fresh "?"
+  // after it for the next unknown step. Ends on 🏆 (victory) or ✕ (defeat).
+  const liveNodes = useMemo(() => {
+    type Node = { key: string; icon: string; label: string; color: string; pulse: boolean; unknown: boolean };
+    const nodes: Node[] = flow.map((step) => ({
+      key: `f${step.id}`,
+      icon: STATUS_ICON[step.status],
+      label: toolShort(step),
+      color: step.status === 'error' ? PALETTE.bad : step.status === 'ok' ? PALETTE.good : PALETTE.gold,
+      pulse: step.status === 'running',
+      unknown: false,
+    }));
+    if (phase === 'victory') {
+      nodes.push({ key: 'win', icon: '🏆', label: 'Victory', color: PALETTE.gold, pulse: false, unknown: false });
+    } else if (phase === 'defeat') {
+      nodes.push({ key: 'lose', icon: '✕', label: 'Failed', color: PALETTE.bad, pulse: false, unknown: false });
+    } else {
+      // The next step is unknown — a pulsing "?" placeholder (also the sole node
+      // before the quest starts).
+      nodes.push({ key: 'next', icon: '❓', label: '?', color: PALETTE.dim, pulse: phase === 'fighting', unknown: true });
+    }
+    return nodes;
+  }, [flow, phase]);
 
   const MILESTONES = useMemo(() => {
     const base = [...MILESTONE_BASE];
@@ -120,6 +145,14 @@ export function QuestTrack({ style, className }: QuestTrackProps) {
 
   const caption = activityCaption(lastAction);
   const pct = Math.round(progress * 100);
+
+  // Keep the newest node in view as the live chain grows.
+  const chainRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (mode === 'live' && chainRef.current) {
+      chainRef.current.scrollLeft = chainRef.current.scrollWidth;
+    }
+  }, [liveNodes.length, mode]);
 
   return (
     <div
@@ -184,6 +217,43 @@ export function QuestTrack({ style, className }: QuestTrackProps) {
       </div>
 
       {/* Track */}
+      {mode === 'live' ? (
+        /* Dynamic chain of unknown length: real steps append and push the "?"
+           forward; auto-scrolls to the newest. */
+        <div ref={chainRef} style={{ display: 'flex', alignItems: 'flex-start', overflowX: 'auto', overflowY: 'hidden', padding: '2px 2px 4px' }}>
+          <AnimatePresence initial={false}>
+            {liveNodes.map((n, i) => (
+              <motion.div
+                key={n.key}
+                layout
+                initial={{ opacity: 0, scale: 0.4 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.4 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+                style={{ display: 'flex', alignItems: 'flex-start', flexShrink: 0 }}
+              >
+                {i > 0 && (
+                  <div style={{ width: 20, height: 2, marginTop: 13, background: liveNodes[i - 1]!.unknown ? PALETTE.border : liveNodes[i - 1]!.color, opacity: 0.7 }} />
+                )}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 60 }}>
+                  <motion.div
+                    animate={n.pulse
+                      ? { boxShadow: [`0 0 4px ${n.color}`, `0 0 14px ${n.color}`, `0 0 4px ${n.color}`], scale: [1, 1.12, 1] }
+                      : { boxShadow: `0 0 8px ${n.color}`, scale: 1 }}
+                    transition={n.pulse ? { duration: 1.1, repeat: Infinity } : { type: 'spring', stiffness: 200, damping: 18 }}
+                    style={{ width: 28, height: 28, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, background: PALETTE.bg, border: `2px solid ${n.color}`, borderStyle: n.unknown ? 'dashed' : 'solid', color: n.color }}
+                  >
+                    {n.icon}
+                  </motion.div>
+                  <span style={{ marginTop: 6, fontSize: 9, textAlign: 'center', letterSpacing: 0.3, color: n.color, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 58 }}>
+                    {n.label}
+                  </span>
+                </div>
+              </motion.div>
+            ))}
+          </AnimatePresence>
+        </div>
+      ) : (
       <div style={{ position: 'relative', padding: '0 6px' }}>
         {/* Rail */}
         <div
@@ -215,7 +285,7 @@ export function QuestTrack({ style, className }: QuestTrackProps) {
           transition={{ type: 'spring', stiffness: 120, damping: 20 }}
         />
 
-        {/* Nodes — RPG milestones (stages) or the real agent steps (live). */}
+        {/* RPG milestone nodes */}
         <div
           style={{
             position: 'relative',
@@ -225,34 +295,7 @@ export function QuestTrack({ style, className }: QuestTrackProps) {
             gap: 4,
           }}
         >
-          {mode === 'live' ? (
-            flow.length === 0 ? (
-              <span style={{ fontSize: 10, color: PALETTE.dim, padding: '4px 2px' }}>
-                Waiting for the agent's first step…
-              </span>
-            ) : (
-              flow.map((step, i) => {
-                const isLast = i === flow.length - 1;
-                const running = step.status === 'running';
-                const color = step.status === 'error' ? PALETTE.bad : step.status === 'ok' ? PALETTE.good : PALETTE.gold;
-                return (
-                  <div key={step.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: '1 1 0', minWidth: 0 }}>
-                    <motion.div
-                      animate={running ? { boxShadow: [`0 0 6px ${color}`, `0 0 16px ${color}`, `0 0 6px ${color}`] } : { boxShadow: `0 0 8px ${color}` }}
-                      transition={running ? { duration: 1.1, repeat: Infinity } : { type: 'spring', stiffness: 200, damping: 18 }}
-                      style={{ width: 24, height: 24, borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 700, background: PALETTE.bg, border: `2px solid ${color}`, color }}
-                    >
-                      {STATUS_ICON[step.status]}
-                    </motion.div>
-                    <span style={{ marginTop: 6, fontSize: 9, textAlign: 'center', letterSpacing: 0.3, color, fontWeight: isLast ? 700 : 400, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 60 }}>
-                      {toolShort(step)}
-                    </span>
-                  </div>
-                );
-              })
-            )
-          ) : (
-          MILESTONES.map((m, i) => {
+          {MILESTONES.map((m, i) => {
             const reached = progress >= m.threshold;
             const isCurrent = i === currentIndex && !failed;
             const nodeColor = failed && reached ? PALETTE.bad : reached ? PALETTE.gold : PALETTE.dim;
@@ -316,10 +359,10 @@ export function QuestTrack({ style, className }: QuestTrackProps) {
                 </span>
               </div>
             );
-          })
-          )}
+          })}
         </div>
       </div>
+      )}
     </div>
   );
 }
