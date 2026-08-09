@@ -3,6 +3,7 @@
 // The human-in-the-loop designer overrides `hero` (and optionally `boss`).
 import { create } from 'zustand';
 import type { AssetManifest, CharacterSprites } from './sprites';
+import { useHeroRoster } from '../heroes/roster';
 
 interface CharState {
   hero: CharacterSprites | null;
@@ -35,10 +36,13 @@ export const useCharacters = create<CharState>((set, get) => ({
   resetBackground: () => set((s) => ({ background: s.defaultBackground ?? s.background })),
   loadDefaults: async () => {
     if (get().loaded) return;
+    // A player-designated default hero (Hero Roster "⭐ Set as Default") wins
+    // over the built-in wizard from the manifest.
+    const rosterDefault = useHeroRoster.getState().getDefaultSprites();
     try {
       const m = (await (await fetch('/sprites/manifest.json')).json()) as AssetManifest;
       set({
-        hero: get().hero ?? m.hero,
+        hero: get().hero ?? rosterDefault ?? m.hero,
         boss: get().boss ?? m.boss,
         defaultBoss: m.boss,
         background: m.background,
@@ -47,6 +51,7 @@ export const useCharacters = create<CharState>((set, get) => ({
       });
     } catch (e) {
       console.error('failed to load sprite manifest', e);
+      if (rosterDefault && !get().hero) set({ hero: rosterDefault, loaded: true });
     }
   },
 }));

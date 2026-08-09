@@ -62,6 +62,8 @@ export function HeroInventory({ onClose, onDesignNew }: HeroInventoryProps) {
   const heroes = useHeroRoster((s) => s.heroes);
   const remove = useHeroRoster((s) => s.remove);
   const rename = useHeroRoster((s) => s.rename);
+  const defaultHeroId = useHeroRoster((s) => s.defaultHeroId);
+  const setDefault = useHeroRoster((s) => s.setDefault);
   const activeHero = useCharacters((s) => s.hero);
 
   // Ensure the default hero (loaded from the manifest) is available even if the
@@ -83,6 +85,13 @@ export function HeroInventory({ onClose, onDesignNew }: HeroInventoryProps) {
   const equip = (hero: SavedHero) => {
     useCharacters.getState().setHero(hero.sprites);
     onClose?.();
+  };
+
+  // Marks this hero as the one that loads on boot (instead of the built-in
+  // wizard), AND equips it right now so the change is felt immediately.
+  const makeDefault = (hero: SavedHero) => {
+    setDefault(hero.id);
+    useCharacters.getState().setHero(hero.sprites);
   };
 
   return (
@@ -180,9 +189,11 @@ export function HeroInventory({ onClose, onDesignNew }: HeroInventoryProps) {
                   hero={hero}
                   index={i}
                   builtin={hero.id === DEFAULT_ID}
+                  isDefault={hero.id === defaultHeroId}
                   onEquip={() => equip(hero)}
                   onRemove={() => remove(hero.id)}
                   onRename={(name) => rename(hero.id, name)}
+                  onSetDefault={() => makeDefault(hero)}
                 />
               ))}
             </AnimatePresence>
@@ -255,12 +266,14 @@ interface HeroCardProps {
   hero: SavedHero;
   index: number;
   builtin?: boolean;
+  isDefault?: boolean;
   onEquip: () => void;
   onRemove: () => void;
   onRename: (name: string) => void;
+  onSetDefault?: () => void;
 }
 
-function HeroCard({ hero, index, builtin, onEquip, onRemove, onRename }: HeroCardProps) {
+function HeroCard({ hero, index, builtin, isDefault, onEquip, onRemove, onRename, onSetDefault }: HeroCardProps) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(hero.name);
 
@@ -358,12 +371,32 @@ function HeroCard({ hero, index, builtin, onEquip, onRemove, onRename }: HeroCar
 
       {builtin ? (
         <span style={{ color: GOLD, fontSize: 11, fontWeight: 700, letterSpacing: 0.5 }}>★ DEFAULT</span>
+      ) : isDefault ? (
+        <span style={{ color: GOLD, fontSize: 11, fontWeight: 700, letterSpacing: 0.5 }}>★ DEFAULT HERO</span>
       ) : (
         <span style={{ color: MUTED, fontSize: 11 }}>{relativeDate(hero.createdAt)}</span>
       )}
 
       {/* Actions */}
       <div style={{ display: 'flex', gap: 8, marginTop: 2 }}>
+        {!builtin && (
+          <motion.button
+            whileTap={isDefault ? undefined : { scale: 0.9 }}
+            onClick={isDefault ? undefined : onSetDefault}
+            disabled={isDefault}
+            title={isDefault ? 'This is your default hero — it loads automatically on boot.' : 'Set as default — loads automatically next time, and equips it now.'}
+            style={{
+              ...btnBase,
+              padding: '10px 12px',
+              background: isDefault ? 'rgba(255,209,102,0.15)' : 'transparent',
+              border: `1px solid ${isDefault ? GOLD : BORDER}`,
+              color: isDefault ? GOLD : MUTED,
+              cursor: isDefault ? 'default' : 'pointer',
+            }}
+          >
+            {isDefault ? '★' : '☆'}
+          </motion.button>
+        )}
         <motion.button
           whileTap={{ scale: 0.96 }}
           onClick={onEquip}

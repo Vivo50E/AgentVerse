@@ -17,12 +17,18 @@ export interface SavedHero {
 
 interface RosterState {
   heroes: SavedHero[];
+  /** Which saved hero (if any) should load in place of the built-in wizard on boot. */
+  defaultHeroId: string | null;
   add: (sprites: CharacterSprites, name?: string) => void;
   remove: (id: string) => void;
   rename: (id: string, name: string) => void;
+  setDefault: (id: string | null) => void;
+  /** The saved hero's sprites, if a default is set — battle/characters.ts reads this on boot. */
+  getDefaultSprites: () => CharacterSprites | null;
 }
 
 const STORAGE_KEY = 'agentverse:heroes';
+const DEFAULT_KEY = 'agentverse:defaultHeroId';
 const MAX_HEROES = 8;
 
 function hasStorage(): boolean {
@@ -90,8 +96,28 @@ function newId(): string {
   }
 }
 
+function loadDefaultId(): string | null {
+  if (!hasStorage()) return null;
+  try {
+    return localStorage.getItem(DEFAULT_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function persistDefaultId(id: string | null): void {
+  if (!hasStorage()) return;
+  try {
+    if (id) localStorage.setItem(DEFAULT_KEY, id);
+    else localStorage.removeItem(DEFAULT_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
 export const useHeroRoster = create<RosterState>((set, get) => ({
   heroes: load(),
+  defaultHeroId: loadDefaultId(),
 
   add: (sprites, name) => {
     const hero: SavedHero = {
@@ -109,6 +135,11 @@ export const useHeroRoster = create<RosterState>((set, get) => ({
   remove: (id) => {
     const next = get().heroes.filter((h) => h.id !== id);
     set({ heroes: persist(next) });
+    // A removed hero can't stay the default.
+    if (get().defaultHeroId === id) {
+      persistDefaultId(null);
+      set({ defaultHeroId: null });
+    }
   },
 
   rename: (id, name) => {
@@ -117,5 +148,16 @@ export const useHeroRoster = create<RosterState>((set, get) => ({
       h.id === id ? { ...h, name: clean || h.name } : h,
     );
     set({ heroes: persist(next) });
+  },
+
+  setDefault: (id) => {
+    persistDefaultId(id);
+    set({ defaultHeroId: id });
+  },
+
+  getDefaultSprites: () => {
+    const { defaultHeroId, heroes } = get();
+    if (!defaultHeroId) return null;
+    return heroes.find((h) => h.id === defaultHeroId)?.sprites ?? null;
   },
 }));
