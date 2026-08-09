@@ -8,6 +8,8 @@ still delivers the real, cited answer at the end.
 
 Powered by **Grok + the X (xAI) API**.
 
+▶ **[Watch the demo](https://youtu.be/6hU_1y0X70M)** · 🌐 **[Live promo page](https://vivo50e.github.io/AgentVerse/)**
+
 ---
 
 ## What it does
