@@ -13,6 +13,7 @@ import { ComingSoon } from './components/ComingSoon';
 import { MiniWidget } from './components/MiniWidget';
 import { QuestBoard } from './components/QuestBoard';
 import { DEMO_QUESTS, type DemoQuest } from './quests/demoQuests';
+import { useCustomQuests } from './quests/store';
 import { PromoQR } from './components/PromoQR';
 import { DesignStudio } from './design';
 import { requestTaskBoss } from './design/designApi';
@@ -123,6 +124,10 @@ export function App() {
   const [showQuestBoard, setShowQuestBoard] = useState(false);
   const [completedDemos, setCompletedDemos] = useState<Set<number>>(readCompletedDemos);
   const [activeDemoId, setActiveDemoId] = useState<number | null>(null);
+  // The quest currently loaded into the console from a Quest Board pick (not
+  // yet started) — cleared the moment the player edits the text themselves,
+  // so tracking never mislabels an unrelated hand-typed task.
+  const [selectedQuestId, setSelectedQuestId] = useState<number | null>(null);
   const taskInputRef = useRef<HTMLTextAreaElement>(null);
 
   // Auto-grow the quest textarea with its content instead of scrolling internally.
@@ -134,6 +139,9 @@ export function App() {
   }, [task]);
 
   const { phase, round, log, answer, sources, streamDone } = useBattle();
+  const customQuests = useCustomQuests((s) => s.quests);
+  const addCustomQuest = useCustomQuests((s) => s.add);
+  const removeCustomQuest = useCustomQuests((s) => s.remove);
 
   // A Quest Board demo finishes (win or lose) while it's the active demo ->
   // mark it done and persist so the checkmark survives a refresh.
@@ -175,12 +183,13 @@ export function App() {
   const fighting = phase === 'fighting';
   const summoningBoss = bossPhase !== null;
   const showReport = (phase === 'victory' || phase === 'defeat') && !reportDismissed;
-  // taskOverride lets a Quest Board card launch its prompt directly instead
-  // of going through the (stale, not-yet-committed) `task` state value.
-  const startQuest = async (taskOverride?: string) => {
-    const activeTask = taskOverride ?? task;
-    if (taskOverride) setTask(taskOverride);
+  const startQuest = async () => {
     setReportDismissed(false);
+    // If the console currently holds a Quest Board pick, track it so the
+    // board can show its checkmark; consume it once so a later hand-typed
+    // task never gets mislabeled as that quest.
+    if (selectedQuestId !== null) setActiveDemoId(selectedQuestId);
+    setSelectedQuestId(null);
     if (sfxOn) resumeAudio(); // unlock the audio context within this click (browser policy)
 
     // Task-themed boss generation (plan.md §7d) — opt-in via Settings, since it
@@ -188,7 +197,7 @@ export function App() {
     // boss silently on failure/timeout, or immediately if the toggle is off.
     if (themedBossOn) {
       setBossPhase('summoning');
-      const { sprites } = await requestTaskBoss(activeTask);
+      const { sprites } = await requestTaskBoss(task);
       const chars = useCharacters.getState();
       if (sprites) {
         chars.setBoss(sprites);
@@ -202,13 +211,16 @@ export function App() {
     } else {
       useCharacters.getState().resetBoss();
     }
-    runAgent(activeTask, { hitl: hitlOn });
+    runAgent(task, { hitl: hitlOn });
   };
 
-  const runDemoQuest = (quest: DemoQuest) => {
-    setActiveDemoId(quest.id);
+  // Quest Board card click: FILL the console with the quest's prompt (does
+  // NOT start it) so the player can review/edit, then hit Start Quest.
+  const pickQuest = (quest: DemoQuest) => {
+    setTask(quest.prompt);
+    setSelectedQuestId(quest.id);
     setShowQuestBoard(false);
-    startQuest(quest.prompt);
+    taskInputRef.current?.focus();
   };
 
   return (
@@ -256,7 +268,7 @@ export function App() {
         <textarea
           ref={taskInputRef}
           value={task}
-          onChange={(e) => setTask(e.target.value)}
+          onChange={(e) => { setTask(e.target.value); setSelectedQuestId(null); }}
           onKeyDown={(e) => {
             // Enter inserts a newline (default textarea behavior); Shift+Enter submits.
             if (e.key === 'Enter' && e.shiftKey) {
@@ -399,10 +411,14 @@ export function App() {
           <QuestBoard
             key="quest-board"
             quests={DEMO_QUESTS}
+            customQuests={customQuests}
             completed={completedDemos}
             activeId={activeDemoId}
+            selectedId={selectedQuestId}
             disabled={fighting || summoningBoss}
-            onRun={runDemoQuest}
+            onPick={pickQuest}
+            onAdd={addCustomQuest}
+            onRemove={removeCustomQuest}
             onClose={() => setShowQuestBoard(false)}
           />
         )}
