@@ -91,6 +91,18 @@ npm run dev                 # vite (5173) + express API (8787); vite proxies /ap
 
 Open http://localhost:5173, type a quest, hit **Start Quest**.
 
+### Install as an app (PWA)
+
+AgentVerse is an installable Progressive Web App — a native‑feeling window with
+its own Dock icon, no browser tabs/address bar, and offline‑cached static
+assets (agent runs always hit the network live; nothing about a quest is
+cached). On a production build (`npm run build && npm run preview`, or the
+deployed site):
+
+- **Chrome / Edge (macOS):** click the **⊕ install icon** in the address bar,
+  or Settings ▸ **Install as app**.
+- **Safari (macOS Sonoma+):** File ▸ **Add to Dock**.
+
 ### Scripts
 
 | command | what |

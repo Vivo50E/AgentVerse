@@ -11,8 +11,24 @@ export const POSES: Pose[] = ['idle', 'attack', 'hurt', 'cast'];
  * design agent) so a knight fights with steel slashes, a mage with arcane
  * bolts, an archer with arrows, etc. Drives which VFX SpellFx renders.
  */
-export type FxArchetype = 'arcane' | 'slash' | 'arrow' | 'fire' | 'lightning' | 'nature';
-export const FX_ARCHETYPES: FxArchetype[] = ['arcane', 'slash', 'arrow', 'fire', 'lightning', 'nature'];
+export type FxArchetype =
+  | 'arcane'     // glowing magic bolts/runes
+  | 'slash'      // steel blade arcs
+  | 'arrow'      // physical projectiles
+  | 'fire'       // burning embers/explosion
+  | 'lightning'  // electric jagged bolts
+  | 'nature'     // vines/leaves/growth
+  | 'ice'        // frost shards/crystals (new)
+  | 'poison'     // toxic clouds/acid splatter (new)
+  | 'explosion'  // fiery blast/shockwave (new)
+  | 'holy'       // radiant beams/golden particles (new)
+  | 'shadow'     // dark tendrils/smoke (new)
+  | 'beam';      // laser/plasma beam (new)
+
+export const FX_ARCHETYPES: FxArchetype[] = [
+  'arcane', 'slash', 'arrow', 'fire', 'lightning', 'nature',
+  'ice', 'poison', 'explosion', 'holy', 'shadow', 'beam'
+];
 
 export interface FxProfile {
   archetype: FxArchetype;

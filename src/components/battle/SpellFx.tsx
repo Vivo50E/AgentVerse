@@ -32,6 +32,13 @@ const ARCHETYPE_PALETTE: Record<FxArchetype, Palette> = {
   fire: { core: '#ffd166', glow: '#ff5a1f', spark: '#ffd8a0' },
   lightning: { core: '#ffffff', glow: '#4aa3ff', spark: '#cfe9ff' },
   nature: { core: '#b6ff8a', glow: '#3fae5a', spark: '#e6ffcf' },
+  // New pre-set effects
+  ice: { core: '#a5f2ff', glow: '#5eb8ff', spark: '#e0f8ff' },
+  poison: { core: '#9fff6b', glow: '#4ade80', spark: '#d4ffbd' },
+  explosion: { core: '#ff6b4d', glow: '#ffaa00', spark: '#ffe066' },
+  holy: { core: '#fff7a3', glow: '#ffe066', spark: '#ffffd4' },
+  shadow: { core: '#9c7cff', glow: '#5c4a9e', spark: '#d4c8ff' },
+  beam: { core: '#7cfaff', glow: '#3ad6ff', spark: '#b0f8ff' },
 };
 
 // Legacy skill tint (used only when archetype is absent).
@@ -47,6 +54,12 @@ const ARCHETYPE_FAMILY: Record<FxArchetype, Family> = {
   arcane: 'orb',
   fire: 'orb',
   nature: 'orb',
+  explosion: 'orb', // fiery blast uses orb family with more particles
+  ice: 'orb',
+  poison: 'orb',
+  holy: 'orb',
+  shadow: 'orb',
+  beam: 'thin', // laser-like
   slash: 'melee',
   arrow: 'thin',
   lightning: 'jagged',

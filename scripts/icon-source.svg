@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#241c44"/>
+      <stop offset="55%" stop-color="#150f2e"/>
+      <stop offset="100%" stop-color="#0b0918"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#b9a3ff"/>
+      <stop offset="45%" stop-color="#7c5cff"/>
+      <stop offset="100%" stop-color="#57d9a3"/>
+    </linearGradient>
+    <filter id="soft" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="10"/>
+    </filter>
+  </defs>
+
+  <!-- chamfered pixel-window frame -->
+  <path d="M40 0 H472 L512 40 V472 L472 512 H40 L0 472 V40 Z" fill="url(#bg)"/>
+  <path d="M40 0 H472 L512 40 V472 L472 512 H40 L0 472 V40 Z" fill="none" stroke="#4a3f7a" stroke-width="14"/>
+  <path d="M40 0 H472 L512 40 V472 L472 512 H40 L0 472 V40 Z" fill="none" stroke="#17122e" stroke-width="6"/>
+
+  <!-- ambient glow -->
+  <circle cx="256" cy="256" r="150" fill="#7c5cff" opacity="0.35" filter="url(#soft)"/>
+
+  <!-- crossed swords (matches the in-app header glyph) -->
+  <g stroke="url(#glow)" stroke-width="30" stroke-linecap="square" fill="none">
+    <path d="M120 120 L392 392"/>
+    <path d="M120 392 L392 120"/>
+  </g>
+  <g fill="url(#glow)">
+    <path d="M120 120 L166 132 L132 166 Z"/>
+    <path d="M392 392 L346 380 L380 346 Z"/>
+    <path d="M120 392 L132 346 L166 380 Z"/>
+    <path d="M392 120 L380 166 L346 132 Z"/>
+  </g>
+
+  <!-- center spark -->
+  <circle cx="256" cy="256" r="16" fill="#ffd166"/>
+</svg>

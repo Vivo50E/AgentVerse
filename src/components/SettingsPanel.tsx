@@ -1,6 +1,8 @@
 // Settings modal — houses app preferences (sound effects, ...). Kept small
 // and extensible so more toggles can move here instead of cluttering the header.
+import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useInstall } from '../pwa/install';
 
 const C = {
   border: '#3a2f66',
@@ -47,6 +49,49 @@ function Row({ title, desc, control }: { title: string; desc: string; control: R
   );
 }
 
+const isSafari = typeof navigator !== 'undefined' && /^((?!chrome|android|crios|firefox|edg).)*safari/i.test(navigator.userAgent);
+
+/** Install-to-Dock row. Chrome/Edge get a real one-click prompt; Safari (macOS/iOS)
+ *  has no programmatic install API, so it gets the manual menu instructions instead. */
+function InstallRow() {
+  const canInstall = useInstall((s) => s.canInstall);
+  const installed = useInstall((s) => s.installed);
+  const promptInstall = useInstall((s) => s.promptInstall);
+  const [status, setStatus] = useState<'idle' | 'dismissed'>('idle');
+
+  const button = installed ? (
+    <span style={{ color: C.good, fontSize: 12, fontWeight: 700, flexShrink: 0 }}>✓ Installed</span>
+  ) : canInstall ? (
+    <button
+      onClick={async () => {
+        const outcome = await promptInstall();
+        if (outcome === 'dismissed') setStatus('dismissed');
+      }}
+      style={{ background: C.accent, border: 0, color: '#fff', borderRadius: 8, padding: '7px 14px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', flexShrink: 0 }}
+    >
+      ⬇ Install
+    </button>
+  ) : (
+    <span style={{ color: C.dim, fontSize: 11, flexShrink: 0, maxWidth: 150, textAlign: 'right' }}>
+      {isSafari ? 'File ▸ Add to Dock' : 'Look for ⊕ in the address bar'}
+    </span>
+  );
+
+  return (
+    <Row
+      title="🖥 Install as app"
+      desc={
+        installed
+          ? 'Running as a standalone app — nice.'
+          : status === 'dismissed'
+            ? 'Maybe later — you can install anytime from here.'
+            : 'Get a native Mac window: its own Dock icon, no browser tabs/address bar.'
+      }
+      control={button}
+    />
+  );
+}
+
 export function SettingsPanel({
   sfxOn, setSfxOn, themedBossOn, setThemedBossOn, hitlOn, setHitlOn, onClose,
 }: {
@@ -85,6 +130,7 @@ export function SettingsPanel({
             desc="Pause after each tool round so you can steer the agent's next move — pick a tactic or type a hint. Adds a short wait per round."
             control={<Toggle on={hitlOn} onChange={setHitlOn} />}
           />
+          <InstallRow />
           <div style={{ color: '#7a72a8', fontSize: 11, marginTop: 14, textAlign: 'center' }}>
             More settings coming soon.
           </div>

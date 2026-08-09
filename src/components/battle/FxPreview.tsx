@@ -12,10 +12,17 @@ export const ARCHETYPE_LABEL: Record<FxArchetype, string> = {
   fire: 'Fire — fireball',
   lightning: 'Lightning — bolt',
   nature: 'Nature — surge',
+  ice: 'Ice — frost shards',
+  poison: 'Poison — toxic cloud',
+  explosion: 'Explosion — shockwave',
+  holy: 'Holy — radiant beam',
+  shadow: 'Shadow — dark tendrils',
+  beam: 'Beam — plasma laser',
 };
 
 export const ARCHETYPE_IS_MELEE: Record<FxArchetype, boolean> = {
   arcane: false, slash: true, arrow: false, fire: false, lightning: false, nature: false,
+  ice: false, poison: false, explosion: false, holy: false, shadow: false, beam: false,
 };
 
 /** Loops a cast→hit sequence for `archetype` inside a compact stage. */

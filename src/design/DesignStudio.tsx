@@ -15,9 +15,13 @@ function classifyFxClient(text: string): FxArchetype {
   const t = text.toLowerCase();
   if (/(knight|warrior|paladin|sword|blade|samurai|barbarian|fighter|soldier|gladiator|melee|axe|spear|lance|brawler|monk|ronin|berserker)/.test(t)) return 'slash';
   if (/(archer|ranger|hunter|bow|arrow|sniper|marksman|gun|crossbow|sharpshooter|rogue|assassin)/.test(t)) return 'arrow';
-  if (/(fire|flame|pyro|inferno|ember|magma|lava|dragon|phoenix|burning|blaze)/.test(t)) return 'fire';
-  if (/(lightning|thunder|storm|electric|shock|volt|tesla|spark|plasma)/.test(t)) return 'lightning';
-  if (/(nature|forest|druid|plant|vine|leaf|earth|poison|toxic|beast|shaman|bloom)/.test(t)) return 'nature';
+  if (/(fire|flame|pyro|inferno|ember|magma|lava|dragon|phoenix|burning|blaze|explosion|bomb)/.test(t)) return 'explosion';
+  if (/(lightning|thunder|storm|electric|shock|volt|tesla|spark|plasma|beam|laser)/.test(t)) return 'lightning';
+  if (/(nature|forest|druid|plant|vine|leaf|earth|poison|toxic|beast|shaman|bloom|venom|acid)/.test(t)) return 'poison';
+  if (/(ice|frost|snow|crystal|freeze|arctic|winter|glacier)/.test(t)) return 'ice';
+  if (/(holy|angel|light|radiant|divine|gold|blessed|celestial)/.test(t)) return 'holy';
+  if (/(shadow|void|dark|necro|demon|ghost|shadow|tentacle|smoke|nightmare)/.test(t)) return 'shadow';
+  if (/(arcane|mage|wizard|sorcerer|mystic|runes|ethereal)/.test(t)) return 'arcane';
   return 'arcane';
 }
 
