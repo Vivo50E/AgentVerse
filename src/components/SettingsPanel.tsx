@@ -44,12 +44,14 @@ function Row({ title, desc, control }: { title: string; desc: string; control: R
 }
 
 export function SettingsPanel({
-  sfxOn, setSfxOn, themedBossOn, setThemedBossOn, onClose,
+  sfxOn, setSfxOn, themedBossOn, setThemedBossOn, hitlOn, setHitlOn, onClose,
 }: {
   sfxOn: boolean;
   setSfxOn: (v: boolean) => void;
   themedBossOn: boolean;
   setThemedBossOn: (v: boolean) => void;
+  hitlOn: boolean;
+  setHitlOn: (v: boolean) => void;
   onClose: () => void;
 }) {
   return (
@@ -73,6 +75,11 @@ export function SettingsPanel({
             title="👹 Task-themed boss"
             desc="Grok summons a unique boss for your quest before the fight starts (~5-10s wait). Off = default boss, no wait."
             control={<Toggle on={themedBossOn} onChange={setThemedBossOn} />}
+          />
+          <Row
+            title="⏸ In-battle commands"
+            desc="Pause after each tool round so you can steer the agent's next move — pick a tactic or type a hint. Adds a short wait per round."
+            control={<Toggle on={hitlOn} onChange={setHitlOn} />}
           />
           <div style={{ color: '#7a72a8', fontSize: 11, marginTop: 14, textAlign: 'center' }}>
             More settings coming soon.

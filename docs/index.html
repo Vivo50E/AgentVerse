@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AgentVerse — Watch your AI agent fight ⚔️</title>
+    <meta name="description" content="AgentVerse turns an AI agent's real workflow into a live pixel-art JRPG battle. A gamified observability + interaction layer for agents, powered by Grok + X." />
+    <meta property="og:title" content="AgentVerse ⚔️ — Watch your AI agent fight" />
+    <meta property="og:description" content="An AI agent's real problem-solving, visualized as a side-scrolling JRPG battle. Powered by Grok + X." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --bg: #0b0918; --accent: #7c5cff; --accent2: #b06bff; --gold: #ffd166;
+        --good: #57d9a3; --text: #e6e2ff; --dim: #a79be0; --panel: rgba(32,25,64,0.72);
+        --border: #3a2f66;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--bg); color: var(--text); overflow-x: hidden;
+        font-family: 'JetBrains Mono', ui-monospace, monospace; line-height: 1.6;
+      }
+      body::before {
+        content: ''; position: fixed; inset: -20%; z-index: -2;
+        background:
+          radial-gradient(40% 50% at 18% 12%, rgba(124,92,255,0.28), transparent 60%),
+          radial-gradient(45% 55% at 85% 18%, rgba(176,107,255,0.22), transparent 60%),
+          radial-gradient(50% 60% at 60% 92%, rgba(87,217,163,0.14), transparent 65%),
+          linear-gradient(180deg,#0b0918,#0d0b1e);
+        background-size: 200% 200%; animation: aurora 22s ease-in-out infinite;
+      }
+      body::after {
+        content: ''; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+        background: radial-gradient(circle at 50% 35%, transparent 55%, rgba(0,0,0,0.55) 100%),
+          repeating-linear-gradient(0deg, rgba(255,255,255,0.015) 0 1px, transparent 1px 3px);
+      }
+      @keyframes aurora { 0%,100%{background-position:0% 50%} 50%{background-position:100% 50%} }
+      @keyframes glow { 0%,100%{filter:drop-shadow(0 0 10px rgba(124,92,255,.55))} 50%{filter:drop-shadow(0 0 22px rgba(176,107,255,.9))} }
+      .wrap { max-width: 960px; margin: 0 auto; padding: 0 22px; }
+      .chamfer {
+        clip-path: polygon(0 10px,10px 0,calc(100% - 10px) 0,100% 10px,100% calc(100% - 10px),calc(100% - 10px) 100%,10px 100%,0 calc(100% - 10px));
+        background: var(--panel); backdrop-filter: blur(8px);
+        box-shadow: inset 0 0 0 2px #4a3f7a, inset 0 0 0 4px #17122e, inset 0 3px 0 rgba(255,255,255,.07);
+      }
+      /* Hero */
+      header { text-align: center; padding: 84px 0 46px; }
+      h1 { font-family: 'Press Start 2P', monospace; font-size: clamp(28px, 6vw, 52px); margin: 0 0 18px;
+        background: linear-gradient(90deg,#b9a3ff,#7c5cff 40%,#57d9a3); -webkit-background-clip: text;
+        background-clip: text; color: transparent; animation: glow 4s ease-in-out infinite; }
+      .tag { font-size: clamp(15px, 2.4vw, 20px); color: var(--text); font-weight: 700; margin: 0 0 10px; }
+      .sub { color: var(--dim); max-width: 640px; margin: 0 auto 30px; }
+      .powered { display: inline-flex; gap: 8px; align-items: center; color: var(--gold); font-size: 13px;
+        border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px; }
+      .cta { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-top: 30px; }
+      .btn { font-family: inherit; font-weight: 700; letter-spacing: .4px; text-decoration: none; padding: 13px 22px;
+        clip-path: polygon(0 5px,5px 0,calc(100% - 5px) 0,100% 5px,100% calc(100% - 5px),calc(100% - 5px) 100%,5px 100%,0 calc(100% - 5px));
+        color: #fff; background: linear-gradient(180deg,#8f6dff,#6a45e0);
+        box-shadow: inset 0 2px 0 rgba(255,255,255,.28), inset 0 -4px 0 rgba(0,0,0,.32), 0 0 16px rgba(124,92,255,.6);
+        transition: transform .08s; }
+      .btn.ghost { background: linear-gradient(180deg,#2a2350,#1c1740); box-shadow: inset 0 0 0 2px #5a4f92, inset 0 2px 0 rgba(255,255,255,.2); color: #d9d3ff; }
+      .btn:hover { transform: translateY(-2px); }
+      /* Sections */
+      section { padding: 40px 0; }
+      h2 { font-family: 'Press Start 2P', monospace; font-size: 15px; letter-spacing: 1px; color: #b9a3ff; margin: 0 0 22px; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+      .card { padding: 18px 20px; }
+      .card h3 { margin: 0 0 8px; font-size: 15px; color: var(--gold); }
+      .card p { margin: 0; color: var(--dim); font-size: 13.5px; }
+      .spine { padding: 18px 22px; font-size: 13px; color: var(--dim); white-space: pre-wrap; overflow-x: auto; }
+      .spine b { color: var(--good); }
+      footer { text-align: center; padding: 50px 0 70px; color: #7a72a8; font-size: 12px; }
+      .stack { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+      .pill { font-size: 12px; color: var(--dim); border: 1px solid var(--border); border-radius: 999px; padding: 4px 11px; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <h1>AgentVerse ⚔️</h1>
+        <p class="tag">Watch your AI agent fight.</p>
+        <p class="sub">
+          AgentVerse turns an AI agent's real problem-solving workflow into a live,
+          side-scrolling <strong>pixel-art JRPG battle</strong> — the agent is the hero,
+          your task is the boss, and every tool call becomes a skill cast. A gamified
+          <strong>observability + interaction layer</strong> for agents that still
+          delivers the real, cited answer.
+        </p>
+        <span class="powered">⚡ Powered by Grok + the X API</span>
+        <div class="cta">
+          <a class="btn" href="https://github.com/Vivo50E/AgentVerse">▶ View on GitHub</a>
+          <a class="btn ghost" href="#features">Explore features</a>
+        </div>
+      </header>
+
+      <section id="features">
+        <h2>WHAT IT DOES</h2>
+        <div class="grid">
+          <div class="card chamfer"><h3>🧙 Side-scrolling JRPG battle</h3><p>The hero journeys through a scrolling scene, fighting a foe at each workflow step, ending at a boss. Melee heroes dash & slash; mages cast bolts.</p></div>
+          <div class="card chamfer"><h3>⚡ Tool calls = skills</h3><p>Grok's native web search, X search, and code execution become the agent's signature moves — "Intel Summon", "Forge".</p></div>
+          <div class="card chamfer"><h3>📜 The real answer, delivered</h3><p>The agent's actual streamed answer + clickable sources appear in a persistent result panel and the victory card. The game is the wrapper; the answer is real.</p></div>
+          <div class="card chamfer"><h3>🔀 Gamified ⇄ observability</h3><p>Flip the battle log to a real Agent Flow trace, and the quest track to a Live chain of the actual steps — unknown length, growing from a "?".</p></div>
+          <div class="card chamfer"><h3>🎨 Human-in-the-loop designer</h3><p>Co-create your hero with parallel Grok "design agents": concept → candidate pixel sprites → refine → forge. Combat VFX matched to the character.</p></div>
+          <div class="card chamfer"><h3>🧰 Gear, hexagon stats & leveling</h3><p>Equip gear across six ability axes; equipped skills control the agent's real tools. Quests grant XP and grow what the agent actually practiced.</p></div>
+        </div>
+      </section>
+
+      <section>
+        <h2>HOW IT WORKS — THE EVENT → BATTLE SPINE</h2>
+        <div class="spine chamfer">User task
+  → <b>POST /api/run</b>  ── streamText(Grok, { web_search, x_search, code_execution })
+  → fullStream events re-emitted as SSE
+→ <b>runAgent</b> reads the stream
+→ <b>eventMapper</b> — the one place deciding what a step means in the fight
+→ <b>battle store</b> (zustand) — HP · log · flow · the real answer
+→ React components animate the JRPG battle</div>
+      </section>
+
+      <section>
+        <h2>BUILT WITH</h2>
+        <div class="stack">
+          <span class="pill">Grok (xAI)</span><span class="pill">X Search</span>
+          <span class="pill">Grok Imagine</span><span class="pill">Vercel AI SDK</span>
+          <span class="pill">React + Vite + TS</span><span class="pill">Framer Motion</span>
+          <span class="pill">Zustand</span><span class="pill">Node / Express</span>
+        </div>
+      </section>
+
+      <footer>
+        Built for a hackathon · A gamified window into what your AI agent is doing — and why.
+      </footer>
+    </div>
+  </body>
+</html>

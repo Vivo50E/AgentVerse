@@ -56,6 +56,11 @@ export function mapEvent(ev: StreamEvent): BattleAction | null {
       // decided at the end of the run (see runAgent), not by a transient error.
       return { type: 'agent_hurt', damage: 8, reason: ev.errorMessage ?? 'a spell fizzled' };
 
+    case 'paused':
+      // HITL round boundary (§7e) — run.ts intercepts this directly to open the
+      // command menu; it carries no battle-visual meaning of its own.
+      return null;
+
     default:
       return null;
   }

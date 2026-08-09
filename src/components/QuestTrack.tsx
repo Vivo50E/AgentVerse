@@ -100,10 +100,10 @@ export function QuestTrack({ style, className }: QuestTrackProps) {
       nodes.push({ key: 'win', icon: '🏆', label: 'Victory', color: PALETTE.gold, pulse: false, unknown: false });
     } else if (phase === 'defeat') {
       nodes.push({ key: 'lose', icon: '✕', label: 'Failed', color: PALETTE.bad, pulse: false, unknown: false });
-    } else {
-      // The next step is unknown — a pulsing "?" placeholder (also the sole node
-      // before the quest starts).
-      nodes.push({ key: 'next', icon: '❓', label: '?', color: PALETTE.dim, pulse: phase === 'fighting', unknown: true });
+    } else if (phase === 'fighting') {
+      // The next step is unknown — a pulsing "?" placeholder. Not shown before
+      // the quest starts (nothing to anticipate yet while just standing by).
+      nodes.push({ key: 'next', icon: '❓', label: '?', color: PALETTE.dim, pulse: true, unknown: true });
     }
     return nodes;
   }, [flow, phase]);

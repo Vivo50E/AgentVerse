@@ -1,8 +1,9 @@
 // Backend proxy. Keeps XAI_API_KEY off the browser and normalizes Grok's
 // fullStream into simple SSE frames the frontend maps to battle actions.
 import 'dotenv/config';
+import { randomUUID } from 'node:crypto';
 import express from 'express';
-import { streamText } from 'ai';
+import { streamText, stepCountIs } from 'ai';
 import { createXai } from '@ai-sdk/xai';
 import { designRouter } from './design';
 
@@ -16,6 +17,23 @@ const xai = createXai({ apiKey: process.env.XAI_API_KEY });
 // agentic tool calling (our whole loop). Alternatives: grok-4.3, grok-4.5.
 const MODEL = 'grok-4.20-multi-agent-0309';
 
+function buildTools(requested: string[]): Record<string, any> {
+  const allTools: Record<string, any> = {
+    web_search: xai.tools.webSearch(),
+    x_search: xai.tools.xSearch(), // signature "Intel Summon ⚡" skill
+    code_execution: xai.tools.codeExecution(),
+  };
+  return Object.fromEntries(Object.entries(allTools).filter(([name]) => requested.includes(name)));
+}
+
+type Send = (obj: unknown) => void;
+
+function sseHeaders(res: express.Response) {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+}
+
 app.post('/api/run', async (req, res) => {
   const task: string = req.body?.task ?? 'Research the latest in AI agents.';
   // The equipped loadout decides which tools the agent may use. Default = all.
@@ -23,20 +41,11 @@ app.post('/api/run', async (req, res) => {
     ? req.body.tools
     : ['web_search', 'x_search', 'code_execution'];
 
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  const send = (obj: unknown) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
+  sseHeaders(res);
+  const send: Send = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
 
   try {
-    const allTools: Record<string, any> = {
-      web_search: xai.tools.webSearch(),
-      x_search: xai.tools.xSearch(), // signature "Intel Summon ⚡" skill
-      code_execution: xai.tools.codeExecution(),
-    };
-    const tools = Object.fromEntries(
-      Object.entries(allTools).filter(([name]) => requested.includes(name)),
-    );
+    const tools = buildTools(requested);
 
     const result = streamText({
       model: xai.responses(MODEL),
@@ -73,6 +82,143 @@ app.post('/api/run', async (req, res) => {
   } catch (err) {
     send({ type: 'error', errorMessage: String(err) });
   }
+  res.write('data: [DONE]\n\n');
+  res.end();
+});
+
+// ── In-battle HITL command menu (plan.md §7e) ──────────────────────────────
+// The tools above are native/server-side (xAI's Responses API chains web_search/
+// x_search/code_execution calls itself within a single model turn, per
+// docs/kb/vercel-ai-sdk.md), so the AI SDK's own step machinery can't give us a
+// per-tool-call pause point — one whole quest is typically ONE AI-SDK step. To
+// get a reliable pause boundary we run our own turn-by-turn loop instead: each
+// HTTP call advances the conversation by exactly one turn (`stopWhen:
+// stepCountIs(1)`), and a system prompt asks the model to take one action then
+// yield. The client decides whether a turn that made a tool call is worth
+// pausing on; the server just reports whether one happened.
+interface RunSession {
+  messages: any[]; // ModelMessage[] — accumulated conversation, incl. tool calls/results
+  tools: Record<string, any>;
+  touchedAt: number;
+}
+const sessions = new Map<string, RunSession>();
+const SESSION_TTL_MS = 20 * 60 * 1000; // abandoned tabs eventually get swept
+setInterval(() => {
+  const cutoff = Date.now() - SESSION_TTL_MS;
+  for (const [id, s] of sessions) if (s.touchedAt < cutoff) sessions.delete(id);
+}, 5 * 60 * 1000).unref();
+
+const HITL_SYSTEM_PROMPT =
+  'You are an adventurer solving a quest for the user, one step at a time. Make one ' +
+  'meaningful move per turn — at most one tool call — then briefly note your plan and ' +
+  'stop; you will be shown the result and may continue on the next turn. Once the quest ' +
+  'is fully solved, give your complete final answer and call no more tools.';
+
+/** Runs exactly one model turn against a session's conversation, streaming SSE events. */
+async function runStep(
+  session: RunSession,
+  send: Send,
+): Promise<{ hadToolCall: boolean; sources: string[]; errored?: string }> {
+  let hadToolCall = false;
+  try {
+    const result = streamText({
+      model: xai.responses(MODEL),
+      system: HITL_SYSTEM_PROMPT,
+      messages: session.messages,
+      tools: session.tools,
+      stopWhen: stepCountIs(1),
+    });
+
+    for await (const ev of result.fullStream) {
+      switch (ev.type) {
+        case 'text-delta':
+          send({ type: 'text-delta', textDelta: (ev as any).text ?? (ev as any).textDelta });
+          break;
+        case 'tool-call':
+          hadToolCall = true;
+          send({ type: 'tool-call', toolName: (ev as any).toolName, input: (ev as any).input });
+          break;
+        case 'tool-result':
+          send({ type: 'tool-result', toolName: (ev as any).toolName, result: (ev as any).result });
+          break;
+        case 'error':
+          send({ type: 'error', errorMessage: String((ev as any).error) });
+          break;
+      }
+      if ((ev.type as string) === 'finish-step' || (ev.type as string) === 'step-finish') {
+        send({ type: 'step-finish' });
+      }
+    }
+
+    session.messages.push(...(await result.responseMessages));
+    const rawSources = (await result.sources)?.map((s: any) => s.url).filter(Boolean) ?? [];
+    return { hadToolCall, sources: [...new Set(rawSources)] };
+  } catch (err) {
+    send({ type: 'error', errorMessage: String(err) });
+    return { hadToolCall: false, sources: [], errored: String(err) };
+  }
+}
+
+/** Sends the terminal event for a turn: pause for HITL input, or truly finish. */
+function finalizeTurn(
+  send: Send,
+  sessionId: string,
+  outcome: { hadToolCall: boolean; sources: string[]; errored?: string },
+) {
+  if (outcome.errored) {
+    sessions.delete(sessionId);
+    send({ type: 'finish', finishReason: 'error' });
+  } else if (outcome.hadToolCall) {
+    send({ type: 'paused', sessionId });
+  } else {
+    sessions.delete(sessionId);
+    send({ type: 'finish', finishReason: 'stop', sources: outcome.sources });
+  }
+}
+
+app.post('/api/run/start', async (req, res) => {
+  const task: string = req.body?.task ?? 'Research the latest in AI agents.';
+  const requested: string[] = Array.isArray(req.body?.tools)
+    ? req.body.tools
+    : ['web_search', 'x_search', 'code_execution'];
+
+  sseHeaders(res);
+  const send: Send = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
+
+  const sessionId = randomUUID();
+  const session: RunSession = {
+    messages: [{ role: 'user', content: `Quest: ${task}` }],
+    tools: buildTools(requested),
+    touchedAt: Date.now(),
+  };
+  sessions.set(sessionId, session);
+
+  const outcome = await runStep(session, send);
+  finalizeTurn(send, sessionId, outcome);
+  res.write('data: [DONE]\n\n');
+  res.end();
+});
+
+app.post('/api/run/continue', async (req, res) => {
+  const sessionId: string = String(req.body?.sessionId ?? '');
+  const hint: string | undefined = req.body?.hint ? String(req.body.hint) : undefined;
+
+  sseHeaders(res);
+  const send: Send = (obj) => res.write(`data: ${JSON.stringify(obj)}\n\n`);
+
+  const session = sessions.get(sessionId);
+  if (!session) {
+    send({ type: 'error', errorMessage: 'quest session expired' });
+    send({ type: 'finish', finishReason: 'error' });
+    res.write('data: [DONE]\n\n');
+    res.end();
+    return;
+  }
+  session.touchedAt = Date.now();
+  if (hint) session.messages.push({ role: 'user', content: hint });
+
+  const outcome = await runStep(session, send);
+  finalizeTurn(send, sessionId, outcome);
   res.write('data: [DONE]\n\n');
   res.end();
 });

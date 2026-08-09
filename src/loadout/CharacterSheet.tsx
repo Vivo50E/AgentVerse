@@ -151,7 +151,7 @@ export function CharacterSheet({ onClose }: { onClose?: () => void }) {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, alignSelf: 'stretch' }}>
-            <h2 style={{ margin: 0, fontSize: 18 }}>Loadout ⚙️</h2>
+            <h2 style={{ margin: 0, fontSize: 18 }}>Equipment ⚙️</h2>
           </div>
           <HexRadar stats={stats} size={320} />
           <div style={{ textAlign: 'center', marginTop: 4 }}>

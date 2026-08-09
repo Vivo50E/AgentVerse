@@ -33,6 +33,11 @@ interface TaskStagesResponse {
   error?: string;
 }
 
+interface TacticsResponse {
+  options?: string[];
+  error?: string;
+}
+
 /** Generation is slow (~10-30s) and can fail — give it a generous timeout. */
 const DESIGN_TIMEOUT_MS = 60_000;
 const FINALIZE_TIMEOUT_MS = 60_000;
@@ -41,6 +46,9 @@ const FINALIZE_TIMEOUT_MS = 60_000;
 const TASK_BOSS_TIMEOUT_MS = 20_000;
 // Text-only (no image gen) and never blocks quest start — a shorter timeout is fine.
 const TASK_STAGES_TIMEOUT_MS = 10_000;
+// Fetched while the HITL command menu is already open and waiting on the
+// player — a short timeout so the menu falls back to generic options quickly.
+const TACTICS_TIMEOUT_MS = 10_000;
 
 async function postJson<T>(url: string, body: unknown, timeoutMs: number): Promise<T> {
   const controller = new AbortController();
@@ -164,6 +172,34 @@ export async function requestTaskStages(task: string): Promise<{ stages?: string
       : err instanceof Error
         ? err.message
         : 'Something went wrong naming the quest stages.';
+    return { error: message };
+  }
+}
+
+/**
+ * Ask for 2-3 tactical options for the hero's next move (plan.md §7e in-battle
+ * HITL command menu), themed to the quest and how far it's gotten. Never
+ * throws — the command menu falls back to generic options on failure.
+ */
+export async function requestTactics(
+  task: string,
+  context: string,
+): Promise<{ options?: string[]; error?: string }> {
+  try {
+    const data = await postJson<TacticsResponse>(
+      '/api/design/tactics',
+      { task, context },
+      TACTICS_TIMEOUT_MS,
+    );
+    if (data.error || !data.options) return { error: data.error ?? 'no tactics returned' };
+    return { options: data.options };
+  } catch (err) {
+    const aborted = err instanceof DOMException && err.name === 'AbortError';
+    const message = aborted
+      ? 'Tactics took too long to arrive.'
+      : err instanceof Error
+        ? err.message
+        : 'Something went wrong drawing up tactics.';
     return { error: message };
   }
 }

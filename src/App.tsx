@@ -1,15 +1,16 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useLayoutEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useBattle } from './battle/store';
 import { useCharacters } from './battle/characters';
 import { runAgent } from './agent/run';
-import { JourneyStage, BossAwakening, type BossAwakeningPhase } from './components/battle';
+import { JourneyStage, BossAwakening, CommandMenu, type BossAwakeningPhase } from './components/battle';
 import { QuestTrack } from './components/QuestTrack';
 import { ReportCard } from './components/ReportCard';
 import { AnswerView } from './components/AnswerView';
 import { AgentFlowView } from './components/AgentFlowView';
 import { SettingsPanel } from './components/SettingsPanel';
-import { GrokletGuide } from './components/GrokletGuide';
+import { ComingSoon } from './components/ComingSoon';
+import { PromoQR } from './components/PromoQR';
 import { DesignStudio } from './design';
 import { requestTaskBoss } from './design/designApi';
 import { EquipmentPanel } from './loadout';
@@ -17,6 +18,7 @@ import { HeroInventory } from './heroes';
 import { useBattleSfx, resumeAudio } from './sfx';
 import {
   IconWand, IconSkull, IconRoster, IconLoadout, IconSettings, IconPlay, IconSwords, IconBook,
+  IconFriends, IconTrophy, IconBoard,
 } from './components/icons';
 
 const PIXEL = "'Press Start 2P', ui-monospace, monospace";
@@ -78,6 +80,12 @@ const readThemedBossPref = (): boolean => {
   try { return localStorage.getItem('agentverse:themedBoss') === 'on'; } catch { return false; }
 };
 
+// Opt-in (plan.md §7e pauses between rounds for player input): off by default,
+// so the default demo stays a hands-off, uninterrupted run.
+const readHitlPref = (): boolean => {
+  try { return localStorage.getItem('agentverse:hitl') === 'on'; } catch { return false; }
+};
+
 export function App() {
   const [task, setTask] = useState('Research the biggest AI agent news this week');
   const [sfxOn, setSfxOn] = useState(readSfxPref); // ON by default
@@ -90,8 +98,19 @@ export function App() {
   const [bossPhase, setBossPhase] = useState<BossAwakeningPhase>(null);
   const [awakenedBossName, setAwakenedBossName] = useState<string | undefined>();
   const [themedBossOn, setThemedBossOnState] = useState(readThemedBossPref);
+  const [hitlOn, setHitlOnState] = useState(readHitlPref);
   const [selectedDemo, setSelectedDemo] = useState<number | null>(null);
   const [showDemoPanel, setShowDemoPanel] = useState(false);
+  const [comingSoon, setComingSoon] = useState<{ title: string; desc: string } | null>(null);
+  const taskInputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Auto-grow the quest textarea with its content instead of scrolling internally.
+  useLayoutEffect(() => {
+    const el = taskInputRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.min(el.scrollHeight, 200)}px`;
+  }, [task]);
 
   const { phase, round, log, answer, sources, streamDone } = useBattle();
 
@@ -162,6 +181,11 @@ export function App() {
     try { localStorage.setItem('agentverse:themedBoss', v ? 'on' : 'off'); } catch { /* ignore */ }
   };
 
+  const changeHitl = (v: boolean) => {
+    setHitlOnState(v);
+    try { localStorage.setItem('agentverse:hitl', v ? 'on' : 'off'); } catch { /* ignore */ }
+  };
+
   const toneColor = { info: '#9d97c9', good: '#57d9a3', bad: '#ff6b81', crit: '#ffd166' } as const;
   const fighting = phase === 'fighting';
   const summoningBoss = bossPhase !== null;
@@ -189,7 +213,7 @@ export function App() {
     } else {
       useCharacters.getState().resetBoss();
     }
-    runAgent(task);
+    runAgent(task, { hitl: hitlOn });
   };
 
   return (
@@ -203,7 +227,7 @@ export function App() {
         }}>
           AgentVerse<span style={{ WebkitTextFillColor: 'initial' }}> ⚔️</span>
         </h1>
-        <GrokletGuide style={{ position: 'fixed', top: '120px', right: '40px', zIndex: 50 }} />
+        <PromoQR style={{ zIndex: 50 }} />
       </div>
       <p style={{ margin: '0 0 22px', color: '#a79be0', fontSize: 13 }}>
         Watch your AI agent adventure through the problem — powered by Grok.
@@ -215,12 +239,21 @@ export function App() {
         <GameButton onClick={() => setDesigning('hero')}><IconWand size={15} /> Design Hero</GameButton>
         <GameButton onClick={() => setDesigning('boss')}><IconSkull size={15} /> Design Boss</GameButton>
         <GameButton onClick={() => setShowHeroes(true)}><IconRoster size={15} /> Heroes</GameButton>
-        <GameButton onClick={() => setLoadout(true)}><IconLoadout size={15} /> Loadout</GameButton>
-        <GameButton 
+        <GameButton onClick={() => setLoadout(true)}><IconLoadout size={15} /> Equipment</GameButton>
+        <GameButton
           onClick={() => setShowDemoPanel(!showDemoPanel)}
           variant={showDemoPanel ? "gold" : "ghost"}
         >
           <IconBook size={15} /> {showDemoPanel ? 'Hide Demos' : 'Show 6 Demos'}
+        </GameButton>
+        <GameButton onClick={() => setComingSoon({ title: '🧑‍🤝‍🧑 FRIENDS', desc: 'Add friends and watch each other\'s quests unfold.' })}>
+          <IconFriends size={15} /> Friends
+        </GameButton>
+        <GameButton onClick={() => setComingSoon({ title: '🏆 LEADERBOARD', desc: 'Rank agent runs by HP remaining, speed, and tool efficiency.' })}>
+          <IconTrophy size={15} /> Leaderboard
+        </GameButton>
+        <GameButton onClick={() => setComingSoon({ title: '📌 QUEST BOARD', desc: 'A home base listing every pending and completed quest.' })}>
+          <IconBoard size={15} /> Quest Board
         </GameButton>
         <GameButton onClick={() => setShowSettings(true)}><IconSettings size={15} /> Settings</GameButton>
       </div>
@@ -282,17 +315,30 @@ export function App() {
       </AnimatePresence>
 
       {/* Quest console */}
-      <div style={{ ...panel, display: 'flex', gap: 12, padding: 12, marginBottom: 20, alignItems: 'center' }}>
-        <span style={{ color: '#57d9a3', fontWeight: 700 }}>▸</span>
-        <input 
-          value={task} 
+      <div style={{ ...panel, display: 'flex', gap: 12, padding: 12, marginBottom: 20, alignItems: 'flex-end' }}>
+        <span style={{ color: '#57d9a3', fontWeight: 700, paddingBottom: 10 }}>▸</span>
+        <textarea
+          ref={taskInputRef}
+          value={task}
           onChange={(e) => {
             setTask(e.target.value);
             setSelectedDemo(null); // clear selection when user edits manually
-          }} 
-          placeholder="Give your agent a quest…" 
+          }}
+          onKeyDown={(e) => {
+            // Enter inserts a newline (default textarea behavior); Shift+Enter submits.
+            if (e.key === 'Enter' && e.shiftKey) {
+              e.preventDefault();
+              if (!fighting && !summoningBoss) startQuest();
+            }
+          }}
+          placeholder="Give your agent a quest…"
           disabled={fighting || summoningBoss}
-          style={{ flex: 1, padding: '10px 8px', borderRadius: 8, border: 'none', background: 'transparent', color: '#fff', fontFamily: 'inherit', fontSize: 14, outline: 'none' }} 
+          rows={1}
+          style={{
+            flex: 1, padding: '10px 8px', borderRadius: 8, border: 'none', background: 'transparent',
+            color: '#fff', fontFamily: 'inherit', fontSize: 14, outline: 'none', resize: 'none',
+            lineHeight: 1.5, minHeight: 22, maxHeight: 200, overflowY: 'auto',
+          }}
         />
         <GameButton variant="primary" disabled={fighting || summoningBoss} onClick={startQuest}>
           {fighting
@@ -358,6 +404,7 @@ export function App() {
 
       {/* Overlays */}
       <BossAwakening phase={bossPhase} bossName={awakenedBossName} />
+      <CommandMenu />
 
       <AnimatePresence>
         {showReport && (
@@ -392,7 +439,20 @@ export function App() {
             setSfxOn={changeSfx}
             themedBossOn={themedBossOn}
             setThemedBossOn={changeThemedBoss}
+            hitlOn={hitlOn}
+            setHitlOn={changeHitl}
             onClose={() => setShowSettings(false)}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {comingSoon && (
+          <ComingSoon
+            key="coming-soon"
+            title={comingSoon.title}
+            desc={comingSoon.desc}
+            onClose={() => setComingSoon(null)}
           />
         )}
       </AnimatePresence>

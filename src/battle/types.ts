@@ -82,7 +82,7 @@ export interface TreeNode {
 
 /** Raw event shape we forward from the Vercel AI SDK fullStream over SSE. */
 export interface StreamEvent {
-  type: 'text-delta' | 'tool-call' | 'tool-result' | 'step-finish' | 'finish' | 'error';
+  type: 'text-delta' | 'tool-call' | 'tool-result' | 'step-finish' | 'finish' | 'error' | 'paused';
   toolName?: string;
   textDelta?: string;
   input?: unknown;
@@ -91,4 +91,6 @@ export interface StreamEvent {
   sources?: string[];
   finishReason?: string;
   errorMessage?: string;
+  /** Only on 'paused' — the HITL run.ts (§7e) needs it to call /api/run/continue. */
+  sessionId?: string;
 }

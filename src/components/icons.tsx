@@ -115,3 +115,38 @@ export function IconBook(p: IconProps) {
     </Svg>
   );
 }
+
+/** Two overlapping heads — Friends. */
+export function IconFriends(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <circle cx="9" cy="8" r="3" />
+      <path d="M3 20 v-1 a6 6 0 0 1 12 0 v1" />
+      <circle cx="17" cy="9" r="2.4" />
+      <path d="M15 20 v-1 a5 5 0 0 1 6.5 -4.7" />
+    </Svg>
+  );
+}
+
+/** Trophy — Leaderboard. */
+export function IconTrophy(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M7 4 h10 v5 a5 5 0 0 1 -10 0 Z" />
+      <path d="M7 5 H4 a1 1 0 0 0 -1 1 v1 a4 4 0 0 0 4 4" />
+      <path d="M17 5 h3 a1 1 0 0 1 1 1 v1 a4 4 0 0 1 -4 4" />
+      <path d="M12 14 v3 M9 20 h6 M9.5 17 h5" />
+    </Svg>
+  );
+}
+
+/** Pinned corkboard card — Quest Board / task hub. */
+export function IconBoard(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <rect x="3" y="4" width="18" height="16" />
+      <circle cx="12" cy="7" r="1" fill="currentColor" stroke="none" />
+      <path d="M7 11 h10 M7 14 h10 M7 17 h6" />
+    </Svg>
+  );
+}

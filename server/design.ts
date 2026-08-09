@@ -14,6 +14,9 @@
 //   5. POST /api/design/stages-for-task -> 4 short JRPG "chapter title" stage names
 //                                     narrating progress toward the task. Text-only
 //                                     (fast), independent of the boss-for-task toggle.
+//   6. POST /api/design/tactics       -> 2-3 short tactical options for the in-battle
+//                                     HITL command menu, themed to the quest + recent
+//                                     progress. Text-only, always attempted.
 import express from 'express';
 import { Jimp } from 'jimp';
 
@@ -244,6 +247,45 @@ async function stageNamesForTask(task: string): Promise<string[]> {
   return stages;
 }
 
+/**
+ * Offer the player short tactical options for the hero's next move, themed to
+ * the quest and how far it's gotten — fuel for the in-battle HITL command menu.
+ */
+async function tacticsForRound(task: string, context: string): Promise<string[]> {
+  const sys =
+    'You are a game master offering a player short tactical options to steer their hero\'s ' +
+    'next move in an ongoing quest, framed as punchy JRPG battle commands (imperative, ' +
+    '<=6 words each, distinct from each other). Respond ONLY with strict JSON: ' +
+    '{"options":["<opt1>","<opt2>","<opt3>"]}. No markdown, no extra text.';
+  const user =
+    `Quest: "${task}". Progress so far: ${context || 'just beginning, nothing tried yet'}. ` +
+    `Offer 3 distinct directions for what the hero should try next.`;
+
+  const res = await fetch(CHAT_URL, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${XAI_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: CHAT_MODEL,
+      messages: [
+        { role: 'system', content: sys },
+        { role: 'user', content: user },
+      ],
+      temperature: 0.9,
+    }),
+  });
+  const j: any = await res.json();
+  const content: string | undefined = j?.choices?.[0]?.message?.content;
+  if (!content) throw new Error('tacticsForRound: empty completion');
+
+  const match = content.match(/\{[\s\S]*\}/);
+  const parsed = JSON.parse(match ? match[0] : content);
+  const options = Array.isArray(parsed.options)
+    ? parsed.options.map((s: unknown) => String(s).trim()).filter(Boolean)
+    : [];
+  if (!options.length) throw new Error('tacticsForRound: no options in JSON');
+  return options.slice(0, 3);
+}
+
 export const designRouter: express.Router = express.Router();
 
 // 1) Multi-agent design generation.
@@ -373,6 +415,23 @@ designRouter.post('/design/stages-for-task', async (req, res) => {
   try {
     const stages = await stageNamesForTask(task);
     res.status(200).json({ stages });
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+  }
+});
+
+// 6) In-battle HITL command menu (plan.md §7e): tactical options for the
+// player to steer the hero's next move. Text-only, always attempted.
+designRouter.post('/design/tactics', async (req, res) => {
+  const task: string = String(req.body?.task ?? '').trim();
+  const context: string = String(req.body?.context ?? '').trim();
+  if (!task) {
+    res.status(400).json({ error: 'task is required' });
+    return;
+  }
+  try {
+    const options = await tacticsForRound(task, context);
+    res.status(200).json({ options });
   } catch (e) {
     res.status(500).json({ error: String(e) });
   }
