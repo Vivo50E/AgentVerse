@@ -3,6 +3,8 @@ import { mapEvent } from '../battle/eventMapper';
 import { useBattle } from '../battle/store';
 import { useCharacters } from '../battle/characters';
 import { matchBackground } from '../battle/backgroundMatch';
+import { useQuestStages } from '../battle/questStages';
+import { requestTaskStages } from '../design/designApi';
 import { useLoadout } from '../loadout';
 import { useProgression } from '../progression';
 import type { StreamEvent } from '../battle/types';
@@ -20,6 +22,14 @@ export async function runAgent(task: string) {
     const chars = useCharacters.getState();
     if (bg) chars.setBackground(bg);
     else chars.resetBackground();
+  });
+
+  // Task-themed quest-stage names (independent of the boss-for-task toggle —
+  // text-only, so it always runs). Falls back to generic defaults on failure.
+  requestTaskStages(task).then(({ stages }) => {
+    const qs = useQuestStages.getState();
+    if (stages) qs.setLabels(stages);
+    else qs.resetLabels();
   });
 
   // The equipped loadout decides which real tools the agent may wield.

@@ -28,12 +28,19 @@ interface TaskBossResponse {
   error?: string;
 }
 
+interface TaskStagesResponse {
+  stages?: string[];
+  error?: string;
+}
+
 /** Generation is slow (~10-30s) and can fail — give it a generous timeout. */
 const DESIGN_TIMEOUT_MS = 60_000;
 const FINALIZE_TIMEOUT_MS = 60_000;
 // Quest start is blocked on this (the "boss awakening" beat) — cap it tighter
 // than the Design Studio's generous timeouts so a slow gen never stalls play.
 const TASK_BOSS_TIMEOUT_MS = 20_000;
+// Text-only (no image gen) and never blocks quest start — a shorter timeout is fine.
+const TASK_STAGES_TIMEOUT_MS = 10_000;
 
 async function postJson<T>(url: string, body: unknown, timeoutMs: number): Promise<T> {
   const controller = new AbortController();
@@ -132,6 +139,31 @@ export async function requestTaskBoss(task: string): Promise<{ sprites?: Charact
       : err instanceof Error
         ? err.message
         : 'Something went wrong summoning the boss.';
+    return { error: message };
+  }
+}
+
+/**
+ * Generate 4 task-themed quest-stage names (plan.md — QuestTrack/JourneyStage
+ * milestones). Independent of the task-themed boss toggle: text-only, so it's
+ * cheap enough to always attempt. Never throws — falls back to generic defaults.
+ */
+export async function requestTaskStages(task: string): Promise<{ stages?: string[]; error?: string }> {
+  try {
+    const data = await postJson<TaskStagesResponse>(
+      '/api/design/stages-for-task',
+      { task },
+      TASK_STAGES_TIMEOUT_MS,
+    );
+    if (data.error || !data.stages) return { error: data.error ?? 'no stages returned' };
+    return { stages: data.stages };
+  } catch (err) {
+    const aborted = err instanceof DOMException && err.name === 'AbortError';
+    const message = aborted
+      ? 'Stage naming took too long.'
+      : err instanceof Error
+        ? err.message
+        : 'Something went wrong naming the quest stages.';
     return { error: message };
   }
 }

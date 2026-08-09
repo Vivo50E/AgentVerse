@@ -59,6 +59,25 @@ export interface BattleState {
   answer: string;                  // the agent's real streamed answer (the useful output)
   streamDone: boolean;             // true once the SSE stream has fully ended
   skillUses: Record<SkillKind, number>; // how many times each skill was cast this run
+
+  // Dynamic horizontal tree — nodes revealed per real agent step (cast/round).
+  // Unknown nodes show as "?" until the step completes.
+  treeRoot: TreeNode | null;
+  currentTreePath: number[]; // node ids from root to current active leaf
+}
+
+export interface TreeNode {
+  id: number;
+  round: number;
+  label: string;           // e.g. "Intel Summon ⚡", "sumArray fixed ✓", "3 citations found"
+  icon: string;            // emoji or skill symbol
+  type: 'start' | 'tool' | 'result' | 'boss';
+  tool?: string;
+  status: 'unknown' | 'revealed' | 'active' | 'completed';
+  detail?: string;         // result summary, error message, citation count, etc.
+  children: TreeNode[];
+  x?: number;              // computed layout position (horizontal tree)
+  y?: number;
 }
 
 /** Raw event shape we forward from the Vercel AI SDK fullStream over SSE. */

@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useAnimationControls } from 'framer-motion';
 import { useBattle } from '../../battle/store';
 import { useCharacters } from '../../battle/characters';
+import { useQuestStages } from '../../battle/questStages';
 import { poseForAction } from '../../battle/sprites';
 import type { CharacterSprites } from '../../battle/sprites';
 import type { SkillKind } from '../../battle/types';
@@ -117,6 +118,7 @@ export function JourneyStage() {
   const boss = useBattle((s) => s.boss);
   const heroActor = useBattle((s) => s.hero);
   const lastAction = useBattle((s) => s.lastAction);
+  const stageLabels = useQuestStages((s) => s.labels);
 
   // Load default hero/boss sprites + the foe table once on mount.
   const [foes, setFoes] = useState<Record<string, FoeSprites>>({});
@@ -379,8 +381,14 @@ export function JourneyStage() {
           const frac = engage > 0 ? clamp((progress - startDrain) / engage, 0, 1) : 1;
           const hpPct = (1 - frac) * 100;
 
+          // Task-themed label: the boss shows its generated name (or the
+          // default "The Problem"); the 4 middle waypoints show the task-themed
+          // quest stage names (falls back to the generic defaults — see
+          // src/battle/questStages.ts). Independent of the boss-gen toggle.
+          const label = isBoss ? boss.name : (stageLabels[i] ?? wp.label);
+
           const foeCharacter: CharacterSprites = {
-            name: wp.label,
+            name: label,
             poses: sprites.poses,
             w: sprites.w,
             h: sprites.h,
@@ -418,7 +426,7 @@ export function JourneyStage() {
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      {wp.label}
+                      {label}
                     </div>
                   )}
                   {showHp && (

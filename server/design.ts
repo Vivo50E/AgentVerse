@@ -11,6 +11,9 @@
 //   4. POST /api/design/boss-for-task -> generate a boss themed to a quest task
 //                                     (name + concept via chat model, sprite via Grok
 //                                     Imagine), sliced+keyed the same way as #2.
+//   5. POST /api/design/stages-for-task -> 4 short JRPG "chapter title" stage names
+//                                     narrating progress toward the task. Text-only
+//                                     (fast), independent of the boss-for-task toggle.
 import express from 'express';
 import { Jimp } from 'jimp';
 
@@ -202,6 +205,45 @@ async function bossConceptForTask(task: string): Promise<{ name: string; concept
   return { name: name || 'The Problem', concept, fx: coerceFx(parsed.fx, task) };
 }
 
+const DEFAULT_STAGE_LABELS = ['Scouting', 'Engaging', 'Breakthrough', 'Final Strike'];
+
+/**
+ * Break a task into 4 short JRPG "chapter title" stage names — the narrative
+ * beats of a quest log, themed to what the task is actually about.
+ */
+async function stageNamesForTask(task: string): Promise<string[]> {
+  const sys =
+    'You are a game narrative designer. Break a real-world task into exactly 4 short JRPG ' +
+    'quest-log stage names (1-2 words each) marking narrative progress toward solving it — ' +
+    'like chapter titles. Example for "fix a memory leak": ["Diagnosing","Isolating","Patching","Verifying"]. ' +
+    'Respond ONLY with strict JSON: {"stages":["<stage1>","<stage2>","<stage3>","<stage4>"]}. No markdown.';
+  const user = `Task: "${task}".`;
+
+  const res = await fetch(CHAT_URL, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${XAI_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: CHAT_MODEL,
+      messages: [
+        { role: 'system', content: sys },
+        { role: 'user', content: user },
+      ],
+      temperature: 0.8,
+    }),
+  });
+  const j: any = await res.json();
+  const content: string | undefined = j?.choices?.[0]?.message?.content;
+  if (!content) throw new Error('stageNamesForTask: empty completion');
+
+  const match = content.match(/\{[\s\S]*\}/);
+  const parsed = JSON.parse(match ? match[0] : content);
+  const stages = Array.isArray(parsed.stages)
+    ? parsed.stages.map((s: unknown) => String(s).trim()).filter(Boolean)
+    : [];
+  if (stages.length !== DEFAULT_STAGE_LABELS.length) throw new Error('stageNamesForTask: expected 4 stages');
+  return stages;
+}
+
 export const designRouter: express.Router = express.Router();
 
 // 1) Multi-agent design generation.
@@ -314,6 +356,23 @@ designRouter.post('/design/boss-for-task', async (req, res) => {
     const { poses, w, h } = await sliceAndKeySheetUrl(url);
     const sprites: CharacterSprites = { name, poses, w, h };
     res.status(200).json({ sprites, fx });
+  } catch (e) {
+    res.status(500).json({ error: String(e) });
+  }
+});
+
+// 5) Task-themed quest stages: 4 short narrative stage names for the quest log,
+// independent of the boss-for-task toggle — text-only, so it's fast and safe to
+// always attempt. Falls back to generic defaults on failure.
+designRouter.post('/design/stages-for-task', async (req, res) => {
+  const task: string = String(req.body?.task ?? '').trim();
+  if (!task) {
+    res.status(400).json({ error: 'task is required' });
+    return;
+  }
+  try {
+    const stages = await stageNamesForTask(task);
+    res.status(200).json({ stages });
   } catch (e) {
     res.status(500).json({ error: String(e) });
   }

@@ -1,9 +1,10 @@
 // QuestTrack — a horizontal RPG "quest" progress bar for the battle area.
 // Reads useBattle via selectors and visualizes overall progress as milestone
 // nodes along an animated fill. Self-contained, inline styles, no props required.
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useBattle } from '../battle/store';
+import { useQuestStages } from '../battle/questStages';
 import type { BattleAction, FlowStep } from '../battle/types';
 
 /** Short label for a real tool in the live track. */
@@ -35,12 +36,15 @@ interface Milestone {
   icon: string;
 }
 
-const MILESTONES: readonly Milestone[] = [
+// Base thresholds/icons/fallback labels. The 4 middle labels (indices 1-4) are
+// overridden per-quest with task-themed names from useQuestStages — "Quest
+// Start" and "Victory" stay generic since they're universal battle states.
+const MILESTONE_BASE: readonly Milestone[] = [
   { threshold: 0, label: 'Quest Start', icon: '🚩' },
-  { threshold: 0.15, label: 'Scouting', icon: '🔍' },
-  { threshold: 0.4, label: 'Engaging', icon: '⚔️' },
-  { threshold: 0.65, label: 'Breakthrough', icon: '💥' },
-  { threshold: 0.9, label: 'Final Strike', icon: '🔥' },
+  { threshold: 0.2, label: '???', icon: '❓' },
+  { threshold: 0.45, label: '???', icon: '❓' },
+  { threshold: 0.7, label: '???', icon: '❓' },
+  { threshold: 0.9, label: '???', icon: '❓' },
   { threshold: 1.0, label: 'Victory', icon: '🏆' },
 ];
 
@@ -76,7 +80,25 @@ export function QuestTrack({ style, className }: QuestTrackProps) {
   const bossMaxHp = useBattle((s) => s.boss.maxHp);
   const lastAction = useBattle((s) => s.lastAction);
   const flow = useBattle((s) => s.flow);
+  const stageLabels = useQuestStages((s) => s.labels);
   const [mode, setMode] = useState<'stages' | 'live'>('stages');
+
+  const MILESTONES = useMemo(() => {
+    const base = [...MILESTONE_BASE];
+    // Only reveal stage names as the agent makes real progress (per round/cast)
+    const revealedCount = Math.min(
+      Math.floor((round + (phase === 'victory' || phase === 'defeat' ? 2 : 0)) / 2) + 1,
+      4
+    );
+    for (let i = 1; i <= revealedCount && i < base.length - 1; i++) {
+      base[i] = { 
+        ...base[i], 
+        label: stageLabels[i - 1] ?? '???', 
+        icon: stageLabels[i - 1] ? (i === 1 ? '🔍' : i === 2 ? '⚔️' : i === 3 ? '💥' : '🔥') : '❓' 
+      };
+    }
+    return base;
+  }, [stageLabels, round, phase]);
 
   let progress: number;
   if (phase === 'idle') progress = 0;
@@ -236,7 +258,7 @@ export function QuestTrack({ style, className }: QuestTrackProps) {
             const nodeColor = failed && reached ? PALETTE.bad : reached ? PALETTE.gold : PALETTE.dim;
             return (
               <div
-                key={m.label}
+                key={m.threshold}
                 style={{
                   display: 'flex',
                   flexDirection: 'column',

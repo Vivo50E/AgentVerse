@@ -103,3 +103,15 @@ export function IconSwords(p: IconProps) {
     </Svg>
   );
 }
+
+/** Book / scroll — Demo cases / Quest Board. */
+export function IconBook(p: IconProps) {
+  return (
+    <Svg {...p}>
+      <path d="M4 6 L4 19 L12 17 L20 19 L20 6 L12 4 Z" />
+      <path d="M12 4 L12 17" />
+      <path d="M8 8 L16 8" />
+      <path d="M8 12 L14 12" />
+    </Svg>
+  );
+}
