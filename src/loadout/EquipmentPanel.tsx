@@ -29,8 +29,8 @@ const TOOL_SOCKETS = 3;
 
 // A single game-style slot frame: beveled, corner ticks, rarity glow when filled.
 function Slot({
-  item, empty, label, onClick, live,
-}: { item: EquipmentItem | null; empty: string; label: string; onClick: () => void; live?: boolean }) {
+  item, empty, label, onClick,
+}: { item: EquipmentItem | null; empty: string; label: string; onClick: () => void }) {
   const border = item ? RARITY[item.rarity] : '#5a4f92';
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5 }}>
@@ -56,9 +56,6 @@ function Slot({
           const [t, r, b, l] = pos.split(' ');
           return <span key={i} style={{ position: 'absolute', top: t === 'auto' ? undefined : 4, right: r === 'auto' ? undefined : 4, bottom: b === 'auto' ? undefined : 4, left: l === 'auto' ? undefined : 4, width: 6, height: 6, borderTop: t === '0' ? `2px solid ${border}` : undefined, borderBottom: b === '0' ? `2px solid ${border}` : undefined, borderLeft: l === '0' ? `2px solid ${border}` : undefined, borderRight: r === '0' ? `2px solid ${border}` : undefined, opacity: 0.8 }} />;
         })}
-        {live && item?.toolId && (
-          <span style={{ position: 'absolute', bottom: -2, right: -2, fontSize: 8, color: '#0a0', background: '#57d9a3', borderRadius: 4, padding: '0 3px', fontWeight: 700 }}>LIVE</span>
-        )}
       </motion.div>
       <span style={{ fontSize: 10, color: item ? RARITY[item.rarity] : '#7a72a8', maxWidth: 74, textAlign: 'center', lineHeight: 1.1 }}>
         {item ? item.name : label}
@@ -146,7 +143,7 @@ export function EquipmentPanel({ onClose }: { onClose?: () => void }) {
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', marginBottom: 18 }}>
               {Array.from({ length: TOOL_SOCKETS }).map((_, i) => {
                 const item = equippedTools[i] ?? null;
-                return <Slot key={i} item={item} empty="➕" label={`Tool ${i + 1}`} live
+                return <Slot key={i} item={item} empty="➕" label={`Tool ${i + 1}`}
                   onClick={() => (item ? unequip(item.id) : setPicking('tools'))} />;
               })}
             </div>
